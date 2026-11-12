@@ -1,0 +1,24 @@
+{% set timeline_status = 'Picked Up' if fulfillment_method == 'Pickup' and order_status == 'Delivered' else order_status %}
+{% if fulfillment_method == 'Pickup' %}
+  {% set timeline_steps = ['Pending', 'Confirmed', 'Preparing', 'Ready for Pickup', 'Picked Up'] %}
+{% else %}
+  {% set timeline_steps = ['Pending', 'Confirmed', 'Preparing', 'Ready for Delivery', 'Out for Delivery', 'Delivered'] %}
+{% endif %}
+{% set timeline_state = namespace(current=-1) %}
+{% for step in timeline_steps %}
+  {% if step == timeline_status %}{% set timeline_state.current = loop.index0 %}{% endif %}
+{% endfor %}
+<section class="order-timeline mt-3" aria-label="Order progress">
+  {% if timeline_status == 'Cancelled' %}
+  <p class="order-timeline-cancelled mb-2"><strong>Order cancelled</strong>{% if order.cancellation_reason %} — {{ order.cancellation_reason }}{% endif %}</p>
+  {% else %}
+  <ol class="order-timeline-list">
+    {% for step in timeline_steps %}
+    <li class="order-timeline-step{% if loop.index0 < timeline_state.current %} is-complete{% elif loop.index0 == timeline_state.current %} is-current{% endif %}">
+      <span class="order-timeline-marker" aria-hidden="true">{% if loop.index0 < timeline_state.current %}✓{% else %}{{ loop.index }}{% endif %}</span>
+      <span class="order-timeline-label">{{ step }}</span>
+    </li>
+    {% endfor %}
+  </ol>
+  {% endif %}
+</section>

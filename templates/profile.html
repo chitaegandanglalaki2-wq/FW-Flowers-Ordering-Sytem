@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% block title %}My Profile{% endblock %}
+{% block content %}
+<div class="customer-profile-overlay" data-profile-dialog>
+  <section class="customer-profile-modal" role="dialog" aria-modal="true"
+           aria-labelledby="customerProfileTitle" tabindex="-1">
+    <header class="customer-profile-modal-header">
+      <div class="customer-profile-modal-title">
+        <span class="customer-profile-modal-icon" aria-hidden="true">♙</span>
+        <h1 id="customerProfileTitle">My Profile</h1>
+      </div>
+      <a class="customer-profile-modal-close" href="{{ url_for('home') }}"
+         aria-label="Close profile and return to the store">×</a>
+    </header>
+
+    <div class="customer-profile-modal-body">
+      <div class="customer-profile-page">
+        <section class="customer-profile-hero panel">
+          <div class="customer-profile-identity">
+            {% if profile.profile_image %}
+            <img class="profile-picture-preview customer-profile-avatar"
+                 src="{{ url_for('static', filename='uploads/'+profile.profile_image) }}"
+                 alt="{{ profile.full_name }} profile photo">
+            {% else %}
+            <div class="profile-picture-preview profile-picture-placeholder customer-profile-avatar"
+                 aria-label="No profile photo uploaded">{{ profile.full_name[:1]|upper }}</div>
+            {% endif %}
+            <div class="customer-profile-heading">
+              <span class="customer-profile-label">FUZZYWIRE CUSTOMER</span>
+              <h2>{{ profile.full_name }}</h2>
+              <p>{{ profile.email }}</p>
+            </div>
+          </div>
+          <div class="customer-profile-badge"><span aria-hidden="true">✿</span> Bouquet lover</div>
+        </section>
+
+        <div class="customer-profile-summary">
+          <article class="customer-profile-summary-card panel">
+            <span class="customer-profile-summary-icon" aria-hidden="true">✉</span>
+            <div><span class="customer-profile-summary-label">EMAIL ADDRESS</span>
+              <strong>{{ profile.email }}</strong></div>
+          </article>
+          <article class="customer-profile-summary-card panel">
+            <span class="customer-profile-summary-icon" aria-hidden="true">☎</span>
+            <div><span class="customer-profile-summary-label">CONTACT NUMBER</span>
+              <strong>{{ profile.phone or 'Not added yet' }}</strong></div>
+          </article>
+          <article class="customer-profile-summary-card panel">
+            <span class="customer-profile-summary-icon" aria-hidden="true">⌖</span>
+            <div><span class="customer-profile-summary-label">SAVED ADDRESS</span>
+              <strong>{{ 'Ready for checkout' if profile.delivery_address else 'Not added yet' }}</strong></div>
+          </article>
+          <article class="customer-profile-summary-card panel">
+            <span class="customer-profile-summary-icon" aria-hidden="true">▤</span>
+            <div><span class="customer-profile-summary-label">TOTAL ORDERS</span>
+              <strong>{{ order_stats.total }}</strong></div>
+          </article>
+          <article class="customer-profile-summary-card panel">
+            <span class="customer-profile-summary-icon" aria-hidden="true">✓</span>
+            <div><span class="customer-profile-summary-label">DELIVERED</span>
+              <strong>{{ order_stats.delivered }}</strong></div>
+          </article>
+          <article class="customer-profile-summary-card panel">
+            <span class="customer-profile-summary-icon" aria-hidden="true">◷</span>
+            <div><span class="customer-profile-summary-label">IN PROGRESS</span>
+              <strong>{{ order_stats.pending }}</strong></div>
+          </article>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" class="customer-profile-form panel">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <div class="customer-profile-section-heading">
+            <div>
+              <p class="eyebrow mb-1">ACCOUNT DETAILS</p>
+              <h3 class="h4 fw-bold mb-1">Personal information</h3>
+              <p class="text-secondary mb-0">Keep your contact and delivery details up to date.</p>
+            </div>
+            <span class="customer-profile-section-mark" aria-hidden="true">✎</span>
+          </div>
+
+          <div class="profile-picture-editor mb-4">
+            {% if profile.profile_image %}
+            <img class="profile-picture-preview" src="{{ url_for('static', filename='uploads/'+profile.profile_image) }}" alt="Your profile photo">
+            {% else %}
+            <div class="profile-picture-preview profile-picture-placeholder" aria-label="No profile photo uploaded">
+              {{ profile.full_name[:1]|upper }}
+            </div>
+            {% endif %}
+            <div class="flex-grow-1">
+              <label class="form-label fw-semibold" for="profileImage">Profile picture</label>
+              <input class="form-control" id="profileImage" name="profile_image" type="file"
+                     accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp">
+              <div class="form-text">Upload a PNG, JPG, JPEG, or WEBP photo (maximum 8 MB).</div>
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="profileName">Full name</label>
+              <input class="form-control" id="profileName" name="full_name" type="text"
+                     maxlength="120" autocomplete="name" value="{{ profile.full_name }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="profileEmail">Email address</label>
+              <input class="form-control" id="profileEmail" name="email" type="email"
+                     maxlength="160" autocomplete="email" value="{{ profile.email }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="profilePhone">Contact number</label>
+              <input class="form-control" id="profilePhone" name="phone" type="tel"
+                     maxlength="30" autocomplete="tel" value="{{ profile.phone or '' }}"
+                     placeholder="e.g. 09XX XXX XXXX">
+            </div>
+          </div>
+
+          <div class="customer-profile-address-section">
+            <h4 class="h5 fw-bold mb-1">Default delivery address</h4>
+            <p class="small text-secondary">This address prefills delivery checkout. You can still choose another address for an individual order.</p>
+            {% set address_values = profile %}
+            {% set address_required = false %}
+            {% set address_prefix = 'profileAddress' %}
+            {% set address_allowed_province_code = laguna_province_code %}
+            {% include '_philippine_address_fields.html' %}
+          </div>
+
+          <div class="customer-profile-actions">
+            <button class="btn btn-pink" type="submit">Save changes</button>
+            <a class="btn btn-outline-pink" href="{{ url_for('my_orders') }}">View my orders</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

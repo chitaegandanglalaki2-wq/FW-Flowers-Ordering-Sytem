@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block title %}{{ product.name }} | FuzzyWire Bouquet{% endblock %}
+{% block content %}
+<p class="eyebrow mb-1">THE BOUQUET COLLECTION</p>
+<div class="product-detail panel">
+  <div class="product-detail-image">
+    {% if product.image_filename %}
+    <img src="{{ url_for('static', filename='uploads/'+product.image_filename) }}" alt="{{ product.name }}">
+    {% else %}
+    <img class="illustrated-bouquet" src="{{ url_for('static', filename='bouquet-art.svg') }}" alt="{{ product.name }} bouquet illustration">
+    {% endif %}
+  </div>
+  <div class="product-detail-info">
+    <a class="small text-secondary text-decoration-none" href="{{ url_for('shop') }}">← Back to bouquets</a>
+    <h1 class="h2 fw-bold mt-3">{{ product.name }}</h1>
+    <div class="product-detail-rating mb-3">
+      <span class="review-stars">★</span> {{ '%.1f'|format(product.avg_rating) }}
+      <span class="text-secondary">({{ product.rating_count }} reviews)</span>
+    </div>
+    <p class="text-secondary">{{ product.description or 'A lovely bouquet, thoughtfully prepared by FuzzyWire Bouquet.' }}</p>
+    <p class="small mb-2"><strong>Flower:</strong> {{ product.flower_type }} <span class="text-secondary">·</span> <strong>Color:</strong> {{ product.color }} <span class="text-secondary">·</span> <strong>Occasion:</strong> {{ product.occasion or 'Any occasion' }}</p>
+    <span class="badge {{ 'text-bg-success' if product.stock > 0 else 'text-bg-danger' }}">
+      {{ 'Available — ' ~ product.stock ~ ' in stock' if product.stock > 0 else 'Sold out' }}
+    </span>
+    <p class="price fs-3 fw-bold my-3">₱{{ '%.2f'|format(product.price) }}</p>
+    {% if product.stock > 0 and current_user and current_user.role == 'customer' %}
+    <form method="post" action="{{ url_for('cart_add', product_id=product.id) }}" class="product-detail-actions">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label class="form-label fw-semibold" for="productQuantity">Quantity</label>
+      <div class="input-group quantity-stepper mb-2" style="max-width: 160px;">
+        <button class="btn btn-outline-pink stepper-btn" type="button" data-stepper-btn="down" data-target="productQuantity" aria-label="Decrease quantity">−</button>
+        <input class="form-control text-center fw-bold product-detail-quantity" id="productQuantity" type="number"
+               name="quantity" value="1" min="1" max="{{ [product.stock, 50]|min }}" step="1">
+        <button class="btn btn-outline-pink stepper-btn" type="button" data-stepper-btn="up" data-target="productQuantity" aria-label="Increase quantity">+</button>
+      </div>
+      <button class="btn btn-outline-pink" type="submit">Add to cart</button>
+      <button class="btn btn-pink" type="submit" formaction="{{ url_for('buy_now', product_id=product.id) }}">Buy now</button>
+    </form>
+    {% elif product.stock > 0 %}
+    <a class="btn btn-pink" href="{{ url_for('login', next=url_for('product_detail', product_id=product.id)) }}">Login to order</a>
+    {% else %}
+    <button class="btn btn-outline-secondary" disabled>Currently sold out</button>
+    {% endif %}
+    {% if current_user and current_user.role == 'customer' %}
+    <form method="post" action="{{ url_for('wishlist_add', product_id=product.id) }}" class="mt-3">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="hidden" name="return_to" value="product">
+      <button class="btn btn-outline-secondary" {% if is_wishlisted %}disabled{% endif %}>{{ 'Saved to wishlist' if is_wishlisted else '♡ Save to wishlist' }}</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+{% if reviews %}
+<section class="mt-5" aria-labelledby="productReviewsTitle">
+  <h2 class="h4 fw-bold mb-3" id="productReviewsTitle">Customer reviews</h2>
+  <div class="row g-3">
+    {% for review in reviews %}
+    <div class="col-md-6">
+      <blockquote class="panel p-3 h-100 mb-0">
+        <div class="review-stars" aria-label="{{ review.rating }} out of 5 stars">{{ '★' * review.rating }}</div>
+        <p class="mb-0 mt-2">{{ review.comment }}</p>
+      </blockquote>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

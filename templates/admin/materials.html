@@ -1,0 +1,185 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Custom Materials{% endblock %}
+{% block admin_content %}
+<div class="admin-page-heading">
+  <div>
+    <p class="eyebrow mb-1">CUSTOM BOUQUETS</p>
+    <h1 class="h2 fw-bold mb-0">Materials and stock</h1>
+  </div>
+</div>
+<p class="text-secondary">Set prices and stock for custom bouquets. Stock is held when a request is confirmed and returned if it is cancelled.</p>
+
+<form class="panel p-3 p-md-4 mb-4" method="post">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <h2 class="h5 fw-bold">Add material</h2>
+  <div class="row g-3 align-items-end">
+    <div class="col-md-4"><label class="form-label" for="newMaterialName">Material name</label><input class="form-control" id="newMaterialName" name="name" maxlength="120" required></div>
+    <div class="col-md-2">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <label class="form-label mb-0" for="newMaterialCategory">Category</label>
+        <button type="button" class="btn btn-link p-0 text-decoration-none small text-pink" id="toggleNewCategoryBtn" style="font-size: 0.76rem;">+ New category</button>
+      </div>
+      <div id="newCategorySelectWrap">
+        <select class="form-select" id="newMaterialCategory" name="category" required>
+          {% for cat in categories %}
+          <option value="{{ cat }}">{{ cat }}</option>
+          {% endfor %}
+          <option value="__other__">+ Custom category...</option>
+        </select>
+      </div>
+      <div id="newCategoryInputWrap" style="display: none;">
+        <div class="input-group">
+          <input class="form-control" id="newMaterialCustomCategory" name="custom_category" placeholder="e.g. Ribbon, Vase" maxlength="60" list="categorySuggestions">
+          <button class="btn btn-outline-secondary" type="button" id="cancelNewCategoryBtn" title="Choose existing category">✕</button>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2"><label class="form-label" for="newMaterialUnit">Unit</label><input class="form-control" id="newMaterialUnit" name="unit" maxlength="40" value="piece" required></div>
+    <div class="col-md-2"><label class="form-label" for="newMaterialPrice">Unit price (₱)</label><input class="form-control" id="newMaterialPrice" name="unit_price" type="number" min="0" step="0.01" required></div>
+    <div class="col-md-1"><label class="form-label" for="newMaterialStock">Stock</label><input class="form-control" id="newMaterialStock" name="stock" type="number" min="0" step="1" value="0" required></div>
+    <div class="col-md-1"><label class="form-label" for="newMaterialThreshold">Warn at</label><input class="form-control" id="newMaterialThreshold" name="low_stock_threshold" type="number" min="0" step="1" value="5" required></div>
+    <div class="col-12"><button class="btn btn-pink">Add material</button></div>
+  </div>
+</form>
+
+<div class="panel p-3 p-md-4">
+  <div class="d-flex justify-content-between align-items-center mb-3"><h2 class="h5 fw-bold mb-0">Available materials</h2><span class="small text-secondary">{{ materials|length }} materials</span></div>
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead><tr><th>Name</th><th>Type</th><th>Unit</th><th>Price</th><th>Stock</th><th>Warn at</th><th>Shown in shop</th><th></th></tr></thead>
+      <tbody>
+        {% for material in materials %}
+        <tr>
+          <td colspan="8">
+            <form method="post" action="{{ url_for('admin_material_edit', material_id=material.id) }}" class="row g-2 align-items-center">
+              <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+              <div class="col-md-2"><label class="visually-hidden" for="materialName{{ material.id }}">Name</label><input class="form-control form-control-sm" id="materialName{{ material.id }}" name="name" value="{{ material.name }}" maxlength="120" required></div>
+              <div class="col-md-2">
+                <label class="visually-hidden" for="materialCategory{{ material.id }}">Category</label>
+                <select class="form-select form-select-sm" id="materialCategory{{ material.id }}" name="category" data-row-category-select="{{ material.id }}">
+                  {% for category in categories %}
+                  <option value="{{ category }}" {% if material.category == category %}selected{% endif %}>{{ category }}</option>
+                  {% endfor %}
+                  <option value="__other__">+ Other category...</option>
+                </select>
+                <div class="input-group input-group-sm mt-1" id="rowCustomCategoryWrap{{ material.id }}" style="display: none;">
+                  <input class="form-control form-control-sm" id="materialCustomCategory{{ material.id }}" name="custom_category" placeholder="New category..." maxlength="60" list="categorySuggestions" data-row-category-input="{{ material.id }}">
+                  <button class="btn btn-outline-secondary btn-sm" type="button" data-cancel-row-category="{{ material.id }}">✕</button>
+                </div>
+              </div>
+              <div class="col-md-1"><label class="visually-hidden" for="materialUnit{{ material.id }}">Unit</label><input class="form-control form-control-sm" id="materialUnit{{ material.id }}" name="unit" value="{{ material.unit }}" maxlength="40" required></div>
+              <div class="col-md-1"><label class="visually-hidden" for="materialPrice{{ material.id }}">Unit price</label><input class="form-control form-control-sm" id="materialPrice{{ material.id }}" name="unit_price" type="number" min="0" step="0.01" value="{{ '%.2f'|format(material.unit_price) }}" required></div>
+              <div class="col-md-1"><label class="visually-hidden" for="materialStock{{ material.id }}">Stock</label><input class="form-control form-control-sm" id="materialStock{{ material.id }}" name="stock" type="number" min="0" step="1" value="{{ material.stock|int if material.stock == material.stock|int else material.stock }}" required></div>
+              <div class="col-md-1"><label class="visually-hidden" for="materialThreshold{{ material.id }}">Warn when stock reaches</label><input class="form-control form-control-sm" id="materialThreshold{{ material.id }}" name="low_stock_threshold" type="number" min="0" step="1" value="{{ material.low_stock_threshold|int if material.low_stock_threshold == material.low_stock_threshold|int else material.low_stock_threshold }}" required></div>
+              <div class="col-md-2 form-check form-switch ms-2"><input class="form-check-input" type="checkbox" id="materialActive{{ material.id }}" name="is_active" value="1" {% if material.is_active %}checked{% endif %}><label class="form-check-label small" for="materialActive{{ material.id }}">Shown to customers</label></div>
+              <div class="col-md-1 text-end"><button class="btn btn-sm btn-outline-pink">Update</button></div>
+            </form>
+            <div class="small mt-2 {% if material.stock <= material.low_stock_threshold %}text-danger{% else %}text-secondary{% endif %}">
+              {% if material.stock <= material.low_stock_threshold %}Low stock: {{ material.stock|int if material.stock == material.stock|int else material.stock }} {{ material.unit }} remaining{% else %}{{ material.stock|int if material.stock == material.stock|int else material.stock }} {{ material.unit }} in stock{% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td class="text-secondary py-4">No materials yet. Add materials above to configure custom bouquets.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<datalist id="categorySuggestions">
+  {% for cat in categories %}
+  <option value="{{ cat }}"></option>
+  {% endfor %}
+</datalist>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const newCatSelect = document.getElementById("newMaterialCategory");
+  const newSelectWrap = document.getElementById("newCategorySelectWrap");
+  const newInputWrap = document.getElementById("newCategoryInputWrap");
+  const newCustomInput = document.getElementById("newMaterialCustomCategory");
+  const toggleBtn = document.getElementById("toggleNewCategoryBtn");
+  const cancelBtn = document.getElementById("cancelNewCategoryBtn");
+
+  const showCustomNewInput = () => {
+    if (newSelectWrap) newSelectWrap.style.display = "none";
+    if (newInputWrap) newInputWrap.style.display = "block";
+    if (newCatSelect) newCatSelect.removeAttribute("required");
+    if (newCustomInput) {
+      newCustomInput.setAttribute("required", "");
+      newCustomInput.focus();
+    }
+    if (toggleBtn) toggleBtn.style.display = "none";
+  };
+
+  const showSelectNew = () => {
+    if (newSelectWrap) newSelectWrap.style.display = "block";
+    if (newInputWrap) newInputWrap.style.display = "none";
+    if (newCustomInput) {
+      newCustomInput.removeAttribute("required");
+      newCustomInput.value = "";
+    }
+    if (newCatSelect) {
+      newCatSelect.setAttribute("required", "");
+      if (newCatSelect.value === "__other__") {
+        newCatSelect.value = newCatSelect.options[0]?.value || "Flower";
+      }
+    }
+    if (toggleBtn) toggleBtn.style.display = "inline-block";
+  };
+
+  if (newCatSelect) {
+    newCatSelect.addEventListener("change", () => {
+      if (newCatSelect.value === "__other__") {
+        showCustomNewInput();
+      }
+    });
+  }
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener("click", showCustomNewInput);
+  }
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener("click", showSelectNew);
+  }
+
+  document.querySelectorAll("[data-row-category-select]").forEach((select) => {
+    const rowId = select.dataset.rowCategorySelect;
+    const wrap = document.getElementById(`rowCustomCategoryWrap${rowId}`);
+    const input = document.getElementById(`materialCustomCategory${rowId}`);
+    if (select && wrap && input) {
+      select.addEventListener("change", () => {
+        if (select.value === "__other__") {
+          wrap.style.display = "flex";
+          input.setAttribute("required", "");
+          input.focus();
+        } else {
+          wrap.style.display = "none";
+          input.removeAttribute("required");
+          input.value = "";
+        }
+      });
+    }
+  });
+
+  document.querySelectorAll("[data-cancel-row-category]").forEach((btn) => {
+    const rowId = btn.dataset.cancelRowCategory;
+    const select = document.getElementById(`materialCategory${rowId}`);
+    const wrap = document.getElementById(`rowCustomCategoryWrap${rowId}`);
+    const input = document.getElementById(`materialCustomCategory${rowId}`);
+    if (select && wrap && input) {
+      btn.addEventListener("click", () => {
+        wrap.style.display = "none";
+        input.removeAttribute("required");
+        input.value = "";
+        if (select.value === "__other__") {
+          select.value = select.options[0]?.value || "Flower";
+        }
+      });
+    }
+  });
+});
+</script>
+{% endblock %}

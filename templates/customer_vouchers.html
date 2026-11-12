@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block title %}My Vouchers{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+  <div>
+    <p class="eyebrow mb-1">CUSTOMER REWARDS</p>
+    <h1 class="h2 fw-bold mb-1">Vouchers</h1>
+    <p class="text-secondary mb-0">Claim an offer, then enter its code at checkout.</p>
+  </div>
+  <a class="btn btn-outline-pink" href="{{ url_for('home') }}">Back to store</a>
+</div>
+
+<section class="panel p-3 p-md-4 mb-4">
+  <div class="mb-3">
+    <h2 class="h5 fw-bold mb-1">Available vouchers</h2>
+    <p class="text-secondary small mb-0">Each voucher can be claimed once per customer. Claim quantities are limited when shown.</p>
+  </div>
+  <div class="row g-3">
+    {% for voucher in available_vouchers %}
+    <div class="col-md-6">
+      <article class="border rounded-3 h-100 p-3">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div>
+            <h3 class="h6 fw-bold mb-1">{{ voucher.name }}</h3>
+            <span class="badge text-bg-light border">{{ voucher.code }}</span>
+          </div>
+          <strong class="price text-nowrap">
+            {% if voucher.discount_type == 'Percent' %}{{ '%.2f'|format(voucher.discount_value) }}% off
+            {% else %}₱{{ '%.2f'|format(voucher.discount_value) }} off{% endif %}
+          </strong>
+        </div>
+        {% if voucher.minimum_subtotal > 0 %}
+        <p class="small text-secondary mt-3 mb-1">Minimum order: ₱{{ '%.2f'|format(voucher.minimum_subtotal) }}</p>
+        {% else %}
+        <p class="small text-secondary mt-3 mb-1">No minimum order amount.</p>
+        {% endif %}
+        <p class="small text-secondary mb-3">
+          {% if voucher.expires_at %}Expires {{ voucher.expires_at.strftime('%b %d, %Y at %I:%M %p') }}.
+          {% else %}No expiration date.{% endif %}
+          {% if voucher.max_claims %} {{ voucher.max_claims - voucher.claimed_count }} left to claim.{% endif %}
+        </p>
+        <form method="post" action="{{ url_for('customer_voucher_claim', voucher_id=voucher.id) }}">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button class="btn btn-pink" type="submit">Claim voucher</button>
+        </form>
+      </article>
+    </div>
+    {% else %}
+    <div class="col-12"><p class="text-secondary mb-0">There are no unclaimed vouchers available right now.</p></div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel p-3 p-md-4">
+  <h2 class="h5 fw-bold mb-3">My claimed vouchers</h2>
+  <div class="row g-3">
+    {% for voucher in claimed_vouchers %}
+    <div class="col-md-6">
+      <article class="border rounded-3 h-100 p-3">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div>
+            <h3 class="h6 fw-bold mb-1">{{ voucher.name }}</h3>
+            <span class="badge text-bg-light border">{{ voucher.code }}</span>
+          </div>
+          {% if voucher.redeemed_at %}
+          <span class="badge text-bg-secondary">Used</span>
+          {% elif not voucher.is_active or (voucher.expires_at and voucher.expires_at <= now)
+                or (voucher.max_uses and voucher.used_count >= voucher.max_uses) %}
+          <span class="badge text-bg-secondary">Unavailable</span>
+          {% else %}
+          <span class="badge text-bg-success">Ready to use</span>
+          {% endif %}
+        </div>
+        <p class="small text-secondary mt-3 mb-1">
+          {% if voucher.discount_type == 'Percent' %}{{ '%.2f'|format(voucher.discount_value) }}% discount
+          {% else %}₱{{ '%.2f'|format(voucher.discount_value) }} discount{% endif %}
+          · Claimed {{ voucher.claimed_at.strftime('%b %d, %Y') }}
+        </p>
+        {% if voucher.expires_at %}
+        <p class="small text-secondary mb-0">Expires {{ voucher.expires_at.strftime('%b %d, %Y at %I:%M %p') }}.</p>
+        {% endif %}
+      </article>
+    </div>
+    {% else %}
+    <div class="col-12"><p class="text-secondary mb-0">You have not claimed any vouchers yet.</p></div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

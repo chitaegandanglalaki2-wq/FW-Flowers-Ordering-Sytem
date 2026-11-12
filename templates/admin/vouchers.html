@@ -1,0 +1,159 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Voucher Management{% endblock %}
+{% block admin_content %}
+<div class="admin-page-heading">
+  <div>
+    <p class="eyebrow mb-1">CUSTOMER DISCOUNTS</p>
+    <h1 class="h2 fw-bold mb-1">Vouchers</h1>
+    <p class="text-secondary mb-0">Create discount codes and see how many customers use them.</p>
+  </div>
+</div>
+
+<section class="panel p-3 p-md-4 mb-4">
+  <h2 class="h5 fw-bold">Create a voucher</h2>
+  <p class="small text-secondary">Customers are notified when you create or turn on a voucher.</p>
+  <form method="post">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label" for="newVoucherName">Voucher name</label>
+        <input class="form-control" id="newVoucherName" name="name" maxlength="120" required>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="newVoucherCode">Voucher code</label>
+        <input class="form-control text-uppercase" id="newVoucherCode" name="code" maxlength="40"
+               pattern="[A-Za-z0-9_-]{3,40}" autocomplete="off" required>
+        <div class="form-text">Use 3–40 letters, numbers, hyphens, or underscores.</div>
+      </div>
+      <div class="col-sm-6 col-lg-3">
+        <label class="form-label" for="newVoucherType">Discount type</label>
+        <select class="form-select" id="newVoucherType" name="discount_type">
+          <option value="Percent">Percentage</option>
+          <option value="Fixed">Fixed amount</option>
+        </select>
+      </div>
+      <div class="col-sm-6 col-lg-3">
+        <label class="form-label" for="newVoucherValue">Discount value</label>
+        <input class="form-control" id="newVoucherValue" name="discount_value"
+               type="number" min="0.01" step="0.01" required>
+      </div>
+      <div class="col-sm-6 col-lg-3">
+        <label class="form-label" for="newVoucherMinimum">Minimum order amount</label>
+        <div class="input-group">
+          <span class="input-group-text">₱</span>
+          <input class="form-control" id="newVoucherMinimum" name="minimum_subtotal"
+                 type="number" min="0" step="0.01" value="0" required>
+        </div>
+      </div>
+      <div class="col-sm-6 col-lg-3">
+        <label class="form-label" for="newVoucherQuantity">Number available</label>
+        <input class="form-control" id="newVoucherQuantity" name="max_claims"
+               type="number" min="1" step="1" placeholder="Unlimited">
+        <div class="form-text">Leave blank for unlimited claims.</div>
+      </div>
+      <div class="col-sm-6 col-lg-4">
+        <label class="form-label" for="newVoucherExpiry">Expiration date and time</label>
+        <input class="form-control" id="newVoucherExpiry" name="expires_at" type="datetime-local">
+        <div class="form-text">Leave blank if the voucher does not expire.</div>
+      </div>
+      <div class="col-12">
+        <button class="btn btn-pink" type="submit">Create voucher</button>
+      </div>
+    </div>
+  </form>
+</section>
+
+<section class="panel p-3 p-md-4">
+  <h2 class="h5 fw-bold mb-3">Your vouchers</h2>
+  {% for voucher in vouchers %}
+  <article class="border rounded-3 p-3 p-md-4 mb-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+      <div>
+        <h3 class="h6 fw-bold mb-1">{{ voucher.name }}</h3>
+        <span class="badge text-bg-light border">{{ voucher.code }}</span>
+        {% if voucher.is_active %}<span class="badge text-bg-success">Active</span>
+        {% else %}<span class="badge text-bg-secondary">Inactive</span>{% endif %}
+      </div>
+      <p class="small text-secondary mb-0">
+        Claimed: <strong>{{ voucher.claimed_count }}{% if voucher.max_claims %} / {{ voucher.max_claims }}{% endif %}</strong>
+        <span class="mx-1">·</span>
+        Used: <strong>{{ voucher.redeemed_count }}</strong>
+      </p>
+    </div>
+    <form method="post" action="{{ url_for('admin_voucher_edit', voucher_id=voucher.id) }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-6">
+          <label class="form-label" for="voucherName{{ voucher.id }}">Voucher name</label>
+          <input class="form-control" id="voucherName{{ voucher.id }}" name="name"
+                 value="{{ voucher.name }}" maxlength="120" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="voucherCode{{ voucher.id }}">Voucher code</label>
+          <input class="form-control" id="voucherCode{{ voucher.id }}" name="code"
+                 value="{{ voucher.code }}" maxlength="40" pattern="[A-Za-z0-9_-]{3,40}" required>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+          <label class="form-label" for="voucherType{{ voucher.id }}">Discount type</label>
+          <select class="form-select" id="voucherType{{ voucher.id }}" name="discount_type">
+            {% for kind,label in [('Percent','Percentage'),('Fixed','Fixed amount')] %}
+            <option value="{{ kind }}" {% if voucher.discount_type == kind %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+          <label class="form-label" for="voucherValue{{ voucher.id }}">Discount value</label>
+          <input class="form-control" id="voucherValue{{ voucher.id }}" name="discount_value"
+                 type="number" min="0.01" step="0.01"
+                 value="{{ '%.2f'|format(voucher.discount_value) }}" required>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+          <label class="form-label" for="voucherMinimum{{ voucher.id }}">Minimum order amount</label>
+          <div class="input-group">
+            <span class="input-group-text">₱</span>
+            <input class="form-control" id="voucherMinimum{{ voucher.id }}" name="minimum_subtotal"
+                   type="number" min="0" step="0.01"
+                   value="{{ '%.2f'|format(voucher.minimum_subtotal) }}" required>
+          </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+          <label class="form-label" for="voucherQuantity{{ voucher.id }}">Available quantity</label>
+          <input class="form-control" id="voucherQuantity{{ voucher.id }}" name="max_claims"
+                 type="number" min="1" step="1" value="{{ voucher.max_claims or '' }}"
+                 placeholder="Unlimited">
+        </div>
+        <div class="col-sm-6 col-lg-4">
+          <label class="form-label" for="voucherExpiry{{ voucher.id }}">Expiration date and time</label>
+          <input class="form-control" id="voucherExpiry{{ voucher.id }}" name="expires_at"
+                 type="datetime-local"
+                 value="{{ voucher.expires_at.strftime('%Y-%m-%dT%H:%M') if voucher.expires_at else '' }}">
+        </div>
+        <div class="col-sm-6 col-lg-4">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="voucherActive{{ voucher.id }}"
+                   name="is_active" value="1" {% if voucher.is_active %}checked{% endif %}>
+            <label class="form-check-label" for="voucherActive{{ voucher.id }}">Voucher is active</label>
+          </div>
+        </div>
+        <div class="col-sm-6 col-lg-4 d-flex flex-wrap gap-2">
+          <button class="btn btn-outline-pink" type="submit">Update voucher</button>
+        </div>
+      </div>
+    </form>
+    <div class="mt-2">
+      {% if voucher.claimed_count == 0 and voucher.redeemed_count == 0 %}
+      <form method="post" action="{{ url_for('admin_voucher_delete', voucher_id=voucher.id) }}"
+            data-confirm-message="Delete this voucher? This cannot be undone.">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn btn-sm btn-outline-danger" type="submit">Delete voucher</button>
+      </form>
+      {% else %}
+      <span class="small text-secondary">Deactivate to retire this voucher. Existing claim and usage records will be kept.</span>
+      {% endif %}
+    </div>
+  </article>
+  {% else %}
+  <p class="text-secondary mb-0">No vouchers have been created yet.</p>
+  {% endfor %}
+</section>
+{% endblock %}

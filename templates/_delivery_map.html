@@ -1,0 +1,28 @@
+<section class="delivery-map-panel mt-3"
+         data-delivery-map
+         data-fulfillment-method="{{ map_fulfillment_method|default('Delivery') }}"
+         data-route-url="{{ map_route_url if map_route_url is defined else url_for('delivery_map_data', order_id=map_order_id) }}">
+  <div class="delivery-map-heading">
+    <div>
+      <p class="eyebrow mb-1" data-map-eyebrow>ESTIMATED ROUTE · DEMO RIDER — NO GPS</p>
+      <h3 class="h6 fw-bold mb-0" data-map-title>Estimated delivery route</h3>
+    </div>
+    <span class="delivery-map-status" data-map-order-status>{{ map_order_status }}</span>
+  </div>
+  <p class="delivery-map-destination mb-2"><strong data-map-destination-label>Destination:</strong> <span data-map-destination>{{ map_destination or 'Shop pickup location' }}</span></p>
+  <div class="delivery-map-canvas" data-map-canvas aria-label="Interactive OpenStreetMap delivery route"></div>
+  <div class="delivery-map-meta">
+    <span data-map-eta>ETA appears when the order is out for delivery.</span>
+    <span data-map-distance></span>
+  </div>
+  <p class="delivery-map-message mb-0" data-map-message role="status" aria-live="polite">
+    Loading the road map and route…
+  </p>
+  <p class="demo-map-disclaimer mb-0">
+    {% if map_fulfillment_method|default('Delivery') == 'Pickup' %}
+    Shop pickup location. The pin marks where to collect your order.
+    {% else %}
+    Estimated route / demo rider — no GPS.
+    {% endif %}
+  </p>
+</section>

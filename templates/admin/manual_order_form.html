@@ -1,0 +1,115 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Add an old order{% endblock %}
+{% block admin_content %}
+<div class="admin-page-heading">
+  <div>
+    <p class="eyebrow mb-1">ORDER RECORDS</p>
+    <h1 class="h2 fw-bold mb-1">Add an old order</h1>
+    <p class="text-secondary mb-0">Use this to add a past order to your records.</p>
+  </div>
+  <a class="btn btn-outline-pink" href="{{ url_for('admin_orders') }}">Back to orders</a>
+</div>
+<section class="panel p-3 p-md-4">
+  <form method="post" id="manualOrderForm">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label" for="manualOrderDate">Order date</label>
+        <input class="form-control" id="manualOrderDate" type="date" name="order_date"
+               value="{{ form_data.get('order_date', today_date) }}" max="{{ today_date }}" required>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="manualPaymentStatus">Payment status</label>
+        <select class="form-select" id="manualPaymentStatus" name="payment_status" required>
+          {% for status in ['Unpaid', 'Pending', 'Paid', 'Failed', 'Refunded'] %}
+          <option value="{{ status }}" {% if form_data.get('payment_status', 'Paid') == status %}selected{% endif %}>{{ status }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="manualCustomerName">Customer name</label>
+        <input class="form-control" id="manualCustomerName" name="customer_name"
+               maxlength="120" value="{{ form_data.get('customer_name', '') }}" required>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="manualPhone">Contact number</label>
+        <input class="form-control" id="manualPhone" name="phone" type="tel"
+               maxlength="30" value="{{ form_data.get('phone', '') }}" required>
+      </div>
+      <div class="col-12">
+        <label class="form-label" for="manualAddress">Delivery address</label>
+        <textarea class="form-control" id="manualAddress" name="delivery_address"
+                  rows="2" maxlength="2000" required>{{ form_data.get('delivery_address', '') }}</textarea>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="manualProduct">Product / bouquet</label>
+        <input class="form-control" id="manualProduct" name="product_name"
+               maxlength="160" value="{{ form_data.get('product_name', '') }}" required>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="manualQuantity">Quantity</label>
+        <input class="form-control" id="manualQuantity" type="number" name="quantity"
+               min="1" max="100000" value="{{ form_data.get('quantity', '1') }}" required>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="manualUnitPrice">Product price (each)</label>
+        <div class="input-group"><span class="input-group-text">₱</span>
+          <input class="form-control" id="manualUnitPrice" type="number" name="unit_price"
+                 min="0.01" max="99999999.99" step="0.01"
+                 value="{{ form_data.get('unit_price', '') }}" required>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="manualDeliveryFee">Delivery fee</label>
+        <div class="input-group"><span class="input-group-text">₱</span>
+          <input class="form-control" id="manualDeliveryFee" type="number" name="delivery_fee"
+                 min="0" max="99999999.99" step="0.01"
+                 value="{{ form_data.get('delivery_fee', '0') }}" required>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="manualOrderStatus">Order status</label>
+        <select class="form-select" id="manualOrderStatus" name="order_status" required>
+          {% for status in statuses %}
+          <option value="{{ status }}" {% if form_data.get('order_status', 'Delivered') == status %}selected{% endif %}>{{ status }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="manualNotes">Notes <span class="text-secondary">(optional)</span></label>
+        <input class="form-control" id="manualNotes" name="notes" maxlength="2000"
+               value="{{ form_data.get('notes', '') }}">
+      </div>
+      <div class="col-12">
+        <div class="d-flex justify-content-between border-top pt-3">
+          <span class="fw-semibold">Total amount</span>
+          <strong class="h5 mb-0" data-manual-order-total>₱0.00</strong>
+        </div>
+        <p class="form-text">Total is calculated as product price × quantity + delivery fee.</p>
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2 mt-3">
+      <button class="btn btn-pink" type="submit">Save Order</button>
+      <a class="btn btn-outline-secondary" href="{{ url_for('admin_orders') }}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+const manualOrderForm = document.getElementById('manualOrderForm');
+if (manualOrderForm) {
+  const quantity = manualOrderForm.querySelector('[name="quantity"]');
+  const unitPrice = manualOrderForm.querySelector('[name="unit_price"]');
+  const deliveryFee = manualOrderForm.querySelector('[name="delivery_fee"]');
+  const total = manualOrderForm.querySelector('[data-manual-order-total]');
+  const updateTotal = () => {
+    const amount = (Number(quantity.value) || 0) * (Number(unitPrice.value) || 0)
+      + (Number(deliveryFee.value) || 0);
+    total.textContent = `₱${amount.toFixed(2)}`;
+  };
+  manualOrderForm.addEventListener('input', updateTotal);
+  updateTotal();
+}
+</script>
+{% endblock %}

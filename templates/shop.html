@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% block title %}Shop{% endblock %}
+{% block content %}
+<div class="mb-4">
+  <p class="eyebrow">THE BOUQUET COLLECTION</p>
+  <h1 class="h2 fw-bold">Flowers &amp; Bouquets</h1>
+  <p class="text-secondary">Choose a bouquet for your special moment.</p>
+</div>
+<section class="shop-toolbar mb-4" aria-label="Find a bouquet">
+  <div class="shop-search-wrap">
+    <label class="visually-hidden" for="productSearch">Search bouquets</label>
+    <span class="shop-search-icon" aria-hidden="true">⌕</span>
+    <input class="form-control shop-search" id="productSearch" type="search" placeholder="Search bouquets..." autocomplete="off">
+  </div>
+  <div class="shop-filter-controls">
+    <div>
+      <label class="visually-hidden" for="flowerFilter">Filter by flower</label>
+      <select class="form-select" id="flowerFilter">
+        <option value="">All flowers</option>
+      </select>
+    </div>
+    <div>
+      <label class="visually-hidden" for="colorFilter">Filter by color</label>
+      <select class="form-select" id="colorFilter"><option value="">All colors</option></select>
+    </div>
+    <div>
+      <label class="visually-hidden" for="occasionFilter">Filter by occasion</label>
+      <select class="form-select" id="occasionFilter"><option value="">All occasions</option></select>
+    </div>
+    <div>
+      <label class="visually-hidden" for="availabilityFilter">Filter by availability</label>
+      <select class="form-select" id="availabilityFilter"><option value="">Any availability</option><option value="available">In stock</option><option value="sold-out">Sold out</option></select>
+    </div>
+    <div class="d-flex gap-2">
+      <label class="visually-hidden" for="minPrice">Minimum price</label><input class="form-control" id="minPrice" type="number" min="0" step="0.01" placeholder="Min ₱">
+      <label class="visually-hidden" for="maxPrice">Maximum price</label><input class="form-control" id="maxPrice" type="number" min="0" step="0.01" placeholder="Max ₱">
+    </div>
+    <div>
+      <label class="visually-hidden" for="productSort">Sort bouquets</label>
+      <select class="form-select" id="productSort">
+        <option value="featured">Featured</option>
+        <option value="price-low">Price: low to high</option>
+        <option value="price-high">Price: high to low</option>
+        <option value="rating">Top rated</option>
+        <option value="sold">Most popular</option>
+      </select>
+    </div>
+  </div>
+</section>
+<p class="shop-result-count small text-secondary mb-3" id="shopResultCount" aria-live="polite">{{ products|length }} bouquets</p>
+<div class="row g-3 g-lg-4" id="productGrid">
+  {% for p in products %}
+  <div class="col-6 col-lg-3 product-grid-item"
+       data-name="{{ p.name }}"
+       data-description="{{ p.description or '' }}"
+       data-flower="{{ p.flower_type or '' }}"
+       data-color="{{ p.color or '' }}"
+       data-occasion="{{ p.occasion or 'Any occasion' }}"
+       data-stock="{{ p.stock }}"
+       data-price="{{ p.price }}"
+       data-rating="{{ p.avg_rating }}"
+       data-sold="{{ p.total_sold }}">
+    <article class="product-card h-100">
+      {% if p.image_filename %}
+      <a class="product-image-link" href="{{ url_for('product_detail', product_id=p.id) }}" aria-label="View {{ p.name }}">
+        <img src="{{ url_for('static',filename='uploads/'+p.image_filename) }}" alt="{{ p.name }}">
+      </a>
+      {% else %}
+      <a class="product-image-link" href="{{ url_for('product_detail', product_id=p.id) }}" aria-label="View {{ p.name }}">
+        <img class="illustrated-bouquet" src="{{ url_for('static',filename='bouquet-art.svg') }}" alt="{{ p.name }} bouquet illustration">
+      </a>
+      {% endif %}
+      <div class="product-info">
+        <h2 class="h6 fw-bold"><a class="product-title-link" href="{{ url_for('product_detail', product_id=p.id) }}">{{ p.name }}</a></h2>
+        <p class="small text-secondary">{{ p.description or '' }}</p>
+        <p class="small mb-1">Flower: {{ p.flower_type }} · Color: {{ p.color }}</p>
+        <p class="small text-secondary mb-1">Occasion: {{ p.occasion or 'Any occasion' }}</p>
+        <p class="product-social-proof mb-2">
+          <span class="review-stars">★</span> {{ '%.1f'|format(p.avg_rating) }} <span class="text-secondary">({{ p.rating_count }} reviews)</span>
+          <span class="product-sold-count"> · {{ p.total_sold }} sold</span>
+        </p>
+        <span class="badge {{ 'text-bg-success' if p.stock > 0 else 'text-bg-danger' }}">{{ 'Available' if p.stock > 0 else 'Sold out' }}</span>
+        <div class="price fw-bold my-3">₱{{ '%.2f'|format(p.price) }}</div>
+        {% if reviews_by_product.get(p.id) %}
+        <div class="product-reviews">
+          {% for review in reviews_by_product.get(p.id, [])[:3] %}
+          <blockquote class="product-review">
+            <div class="d-flex justify-content-between gap-2"><strong>Verified buyer</strong><span class="review-stars">{{ '★' * review.rating }}</span></div>
+            <p class="mb-0">{{ review.comment }}</p>
+          </blockquote>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% if p.stock > 0 and current_user and current_user.role == 'customer' %}
+        <form method="post" action="{{ url_for('cart_add',product_id=p.id) }}">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <label class="small fw-semibold" for="quantity-{{ p.id }}">Quantity</label>
+          <div class="input-group input-group-sm quantity-stepper mb-2">
+            <button class="btn btn-outline-pink stepper-btn" type="button" data-stepper-btn="down" data-target="quantity-{{ p.id }}" aria-label="Decrease quantity">−</button>
+            <input class="form-control form-control-sm text-center fw-bold" id="quantity-{{ p.id }}" type="number" name="quantity" value="1" min="1" max="{{ [p.stock, 50]|min }}" step="1">
+            <button class="btn btn-outline-pink stepper-btn" type="button" data-stepper-btn="up" data-target="quantity-{{ p.id }}" aria-label="Increase quantity">+</button>
+          </div>
+          <div class="d-grid gap-2">
+            <button class="btn btn-pink w-100">Add to cart</button>
+            <button class="btn btn-outline-pink w-100" formaction="{{ url_for('buy_now', product_id=p.id) }}">Buy now</button>
+          </div>
+        </form>
+        {% elif p.stock > 0 %}
+        <a class="btn btn-pink w-100" href="{{ url_for('login') }}">Login to order</a>
+        {% else %}
+        <button class="btn btn-outline-secondary w-100" disabled>Sold out</button>
+        {% endif %}
+        {% if current_user and current_user.role == 'customer' %}
+        <form method="post" action="{{ url_for('wishlist_add', product_id=p.id) }}" class="mt-2">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <input type="hidden" name="return_to" value="shop">
+          <button class="btn btn-outline-secondary w-100" {% if p.id in wishlist_ids %}disabled{% endif %}>
+            {{ 'Saved to wishlist' if p.id in wishlist_ids else '♡ Save to wishlist' }}
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </article>
+  </div>
+  {% else %}
+  <div class="col-12"><div class="empty-state"><span aria-hidden="true">🌷</span><p class="mb-0">No bouquets are available right now.</p></div></div>
+  {% endfor %}
+</div>
+<div class="empty-state compact d-none" id="noProductsFound" role="status">
+  <span aria-hidden="true">🌷</span>
+  <p class="mb-0">No bouquets match your search. Try changing your filters.</p>
+</div>
+{% endblock %}

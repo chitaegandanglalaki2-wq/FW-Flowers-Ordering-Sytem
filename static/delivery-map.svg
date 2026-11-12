@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 230" fill="none">
+  <rect width="720" height="230" rx="16" fill="#F5F8F6"/>
+  <path d="M-20 62H740M-20 165H740M115 -20V250M320 -20V250M535 -20V250" stroke="#E5ECE8" stroke-width="21"/>
+  <path d="M-20 62H740M-20 165H740M115 -20V250M320 -20V250M535 -20V250" stroke="#fff" stroke-width="14"/>
+  <path d="M0 114C100 114 129 79 224 95C314 111 365 145 442 113C539 74 581 114 720 111" stroke="#F3B9C9" stroke-width="7" stroke-linecap="round" stroke-dasharray="3 12"/>
+  <rect x="37" y="25" width="116" height="28" rx="14" fill="#fff" stroke="#E9E2E6"/>
+  <text x="95" y="44" fill="#635B66" font-family="Arial,sans-serif" font-size="12" text-anchor="middle">FLOWER SHOP</text>
+  <rect x="566" y="144" width="112" height="28" rx="14" fill="#fff" stroke="#E9E2E6"/>
+  <text x="622" y="163" fill="#635B66" font-family="Arial,sans-serif" font-size="12" text-anchor="middle">YOUR ADDRESS</text>
+  <circle cx="64" cy="114" r="17" fill="#fff" stroke="#E94375" stroke-width="4"/>
+  <path d="M64 105C58 105 54 109 54 115C54 122 64 131 64 131C64 131 74 122 74 115C74 109 70 105 64 105Z" fill="#E94375"/>
+  <circle cx="64" cy="115" r="3" fill="#fff"/>
+  <circle cx="653" cy="111" r="17" fill="#fff" stroke="#E94375" stroke-width="4"/>
+  <path d="M653 102C647 102 643 106 643 112C643 119 653 128 653 128C653 128 663 119 663 112C663 106 659 102 653 102Z" fill="#E94375"/>
+  <circle cx="653" cy="112" r="3" fill="#fff"/>
+  <path id="riderRoute" d="M85 113C178 113 220 81 303 96C384 110 414 143 483 115C541 91 582 107 632 110"/>
+  <g>
+    <animateMotion dur="9s" repeatCount="indefinite" rotate="auto">
+      <mpath href="#riderRoute"/>
+    </animateMotion>
+    <circle cx="0" cy="0" r="16" fill="#173D5B" stroke="#fff" stroke-width="3"/>
+    <path d="M-9 3L-6-3H1L5 1H9V6H-9V3Z" fill="#fff"/>
+    <circle cx="-5" cy="7" r="2.3" fill="#F6C95F"/>
+    <circle cx="6" cy="7" r="2.3" fill="#F6C95F"/>
+    <path d="M-5-4L-1-8L5-6L3-2Z" fill="#E94375"/>
+  </g>
+</svg>

@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}FuzzyWire Bouquet{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='mobile-checkout-v11') }}">
+  {% if request.endpoint in ['track', 'order_detail', 'customer_custom_detail', 'admin_order_detail', 'admin_custom_detail', 'shop_location', 'admin_shop_location', 'checkout', 'custom_order'] %}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+  {% endif %}
+</head>
+{% set floating_endpoints = ['cart', 'my_orders', 'order_detail', 'notifications', 'product_detail', 'checkout', 'custom_order', 'customer_chat', 'feedback', 'track', 'wishlist'] %}
+{% set customer_page_labels = {
+  'home': 'Home',
+  'shop': 'Shop',
+  'product_detail': 'Bouquet details',
+  'customer_profile': 'My Profile',
+  'cart': 'Cart',
+  'checkout': 'Checkout',
+  'my_orders': 'My Orders',
+  'order_detail': 'Order details',
+  'track': 'Track order',
+  'notifications': 'Notifications',
+  'customer_vouchers': 'Vouchers',
+  'admin_notifications': 'Notifications',
+  'customer_chat': 'Chat with us',
+  'custom_order': 'Custom Bouquet',
+  'wishlist': 'Wishlist',
+  'feedback': 'Feedback',
+  'terms': 'Terms and Conditions',
+  'privacy': 'Privacy Policy'
+} %}
+<body{% if request.endpoint in ['login', 'admin_login', 'forgot_password', 'verify_otp'] %} class="login-page-body{% if request.endpoint == 'admin_login' %} admin-login-body{% endif %}"{% elif request.endpoint == 'customer_profile' %} class="profile-modal-open"{% elif request.endpoint in floating_endpoints %} class="floating-page-open"{% elif current_user and current_user.role == 'admin' %} class="admin-app"{% endif %}>
+{% if request.endpoint not in ['login', 'admin_login', 'forgot_password', 'verify_otp'] %}
+<nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top site-navbar{% if current_user and current_user.role == 'customer' %} customer-site-navbar{% endif %}">
+  <div class="container">
+    <div class="brand-admin-group">
+      <a class="navbar-brand brand fw-bold" href="{{ url_for('home') }}">
+        <img class="brand-logo" src="{{ url_for('static', filename='facebook-page.jpg') }}" alt="">
+        <span>FuzzyWire <span class="brand-light">Bouquet</span></span>
+      </a>
+      {% if current_user and current_user.role == 'admin' %}
+      {% set total_admin_alerts = (admin_unread_notifications or 0) + (admin_new_order_count or 0) + (admin_unread_chat_count or 0) + (pending_verification_count or 0) + (admin_new_feedback_count or 0) + (admin_pending_payments_count or 0) + (admin_low_stock_products_count or 0) + (admin_low_stock_materials_count or 0) %}
+      <button class="btn btn-outline-pink admin-menu-toggle position-relative" type="button" aria-expanded="false" aria-controls="adminMenu" data-admin-unread-url="{{ url_for('admin_notification_unread_count') }}">
+        <span class="admin-menu-toggle-icon" aria-hidden="true">☰</span>
+        <span>Menu</span>
+        <span class="admin-menu-count ms-1" data-admin-total-count{% if not total_admin_alerts %} hidden{% endif %}>{{ total_admin_alerts }}</span>
+      </button>
+      {% elif current_user and current_user.role == 'customer' %}
+      {% set total_customer_alerts = (unread_notifications or 0) + (unread_chat_count or 0) + (active_orders_count or 0) + (pending_feedback_count or 0) + (cart_item_count or 0) %}
+      <button class="btn btn-outline-pink customer-menu-toggle position-relative" type="button" aria-expanded="false" aria-controls="customerMenu" aria-label="Open customer menu. Current page: {{ customer_page_labels.get(request.endpoint, 'Store') }}">
+        <span class="admin-menu-toggle-icon" aria-hidden="true">☰</span>
+        <span>Menu</span>
+        <span class="customer-menu-current-page" aria-hidden="true">{{ customer_page_labels.get(request.endpoint, 'Store') }}</span>
+        {% if total_customer_alerts > 0 %}
+        <span class="customer-menu-count ms-1">{{ total_customer_alerts }}</span>
+        {% endif %}
+      </button>
+      {% endif %}
+    </div>
+    {% if current_user and current_user.role == 'customer' %}
+    <div class="mobile-customer-actions">
+      <a class="mobile-cart-link{% if request.endpoint in ['cart', 'checkout'] %} active{% endif %}"
+         href="{{ url_for('cart') }}" aria-label="Shopping cart{% if cart_item_count %}, {{ cart_item_count }} items{% endif %}">
+        {% set cart_icon_class = 'cart-nav-icon' %}
+        {% include '_cart_icon.html' %}
+        {% if cart_item_count %}<span class="cart-count-badge">{{ cart_item_count }}</span>{% endif %}
+        <span class="visually-hidden">Cart</span>
+      </a>
+      <details class="mobile-secondary-menu">
+        <summary aria-label="More account options" title="More account options"><span aria-hidden="true">⋮</span></summary>
+        <div class="mobile-secondary-menu-panel">
+          <form method="post" action="{{ url_for('logout') }}">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button type="submit">Logout</button>
+          </form>
+        </div>
+      </details>
+    </div>
+    {% endif %}
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="nav">
+      <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
+        {% if not current_user %}
+        <li class="nav-item"><a class="nav-link{% if request.endpoint == 'home' %} active{% endif %}" href="{{ url_for('home') }}">Home</a></li>
+        <li class="nav-item"><a class="nav-link{% if request.endpoint == 'shop' %} active{% endif %}" href="{{ url_for('shop') }}">Shop</a></li>
+        <li class="nav-item"><a class="nav-link{% if request.endpoint == 'shop_location' %} active{% endif %}" href="{{ url_for('shop_location') }}">Shop for Pick-up</a></li>
+        {% endif %}
+        {% if current_user and current_user.role == 'customer' %}
+        <li class="nav-item"><a class="nav-link{% if request.endpoint == 'shop_location' %} active{% endif %}" href="{{ url_for('shop_location') }}">Shop for Pick-up</a></li>
+        <li class="nav-item">
+          <a class="nav-link cart-nav-link{% if request.endpoint in ['cart', 'checkout'] %} active{% endif %}"
+             href="{{ url_for('cart') }}" aria-label="Shopping cart{% if cart_item_count %}, {{ cart_item_count }} items{% endif %}">
+            {% set cart_icon_class = 'cart-nav-icon' %}
+            {% include '_cart_icon.html' %}
+            <span>Cart</span>
+            {% if cart_item_count %}<span class="cart-count-badge">{{ cart_item_count }}</span>{% endif %}
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link notification-nav-link{% if request.endpoint == 'notifications' %} active{% endif %}" href="{{ url_for('notifications') }}" data-unread-url="{{ url_for('notification_unread_count') }}" aria-label="Notifications{% if unread_notifications %}, {{ unread_notifications }} unread{% endif %}">
+            <span class="notification-icon-wrap" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" focusable="false">
+                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z"></path>
+                <path d="M10 21h4"></path>
+                <path class="notification-icon-sparkle" d="M19 3v3m-1.5-1.5h3"></path>
+              </svg>
+            </span>
+            <span class="notification-nav-label">Notifications</span>
+            {% if unread_notifications %}<span class="notification-count">{{ unread_notifications }}</span>{% endif %}
+          </a>
+        </li>
+        <li class="nav-item"><a class="nav-link{% if request.endpoint == 'customer_vouchers' %} active{% endif %}" href="{{ url_for('customer_vouchers') }}">Vouchers</a></li>
+        <li class="nav-item">
+          <form method="post" action="{{ url_for('logout') }}">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button class="btn btn-outline-secondary btn-sm nav-logout">Logout</button>
+          </form>
+        </li>
+        {% elif current_user and current_user.role == 'admin' %}
+        <li class="nav-item">
+          <form method="post" action="{{ url_for('logout') }}">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button class="btn btn-outline-secondary btn-sm nav-logout">Logout</button>
+          </form>
+        </li>
+        {% else %}
+        <li class="nav-item"><a class="nav-link{% if request.endpoint == 'login' %} active{% endif %}" href="{{ url_for('login') }}">Login</a></li>
+        <li class="nav-item"><a class="btn btn-pink btn-sm nav-register" href="{{ url_for('register') }}">Create Account</a></li>
+        {% endif %}
+      </ul>
+    </div>
+    {% if current_user and current_user.role == 'customer' %}
+    <div class="customer-menu-dropdown d-none" id="customerMenu">
+      <nav aria-label="Customer menu">
+        <a href="{{ url_for('home') }}"{% if request.endpoint == 'home' %} aria-current="page"{% endif %}>Home</a>
+        <a href="{{ url_for('shop') }}"{% if request.endpoint == 'shop' %} aria-current="page"{% endif %}>Shop</a>
+        <a href="{{ url_for('shop_location') }}"{% if request.endpoint == 'shop_location' %} aria-current="page"{% endif %}>Shop for Pick-up</a>
+        <a href="{{ url_for('cart') }}"{% if request.endpoint in ['cart', 'checkout'] %} aria-current="page"{% endif %}>Cart{% if cart_item_count %} <span class="customer-menu-count">{{ cart_item_count }}</span>{% endif %}</a>
+        <a href="{{ url_for('notifications') }}"{% if request.endpoint == 'notifications' %} aria-current="page"{% endif %}>Notifications <span class="customer-menu-count" data-notification-count{% if not unread_notifications %} hidden{% endif %}>{{ unread_notifications }}</span></a>
+        <a href="{{ url_for('customer_vouchers') }}"{% if request.endpoint == 'customer_vouchers' %} aria-current="page"{% endif %}>Vouchers{% if available_vouchers_count %} <span class="customer-menu-count">{{ available_vouchers_count }}</span>{% endif %}</a>
+        <a href="{{ url_for('custom_order') }}"{% if request.endpoint == 'custom_order' %} aria-current="page"{% endif %}>Custom Bouquet</a>
+        <a href="{{ url_for('wishlist') }}"{% if request.endpoint == 'wishlist' %} aria-current="page"{% endif %}>Wishlist{% if wishlist_count %} <span class="customer-menu-count">{{ wishlist_count }}</span>{% endif %}</a>
+        <a href="{{ url_for('customer_chat') }}"{% if request.endpoint == 'customer_chat' %} aria-current="page"{% endif %}>Chat with us{% if unread_chat_count %} <span class="customer-menu-count">{{ unread_chat_count }}</span>{% endif %}</a>
+        <a href="{{ url_for('customer_profile') }}"{% if request.endpoint == 'customer_profile' %} aria-current="page"{% endif %}>My Profile</a>
+        <a href="{{ url_for('my_orders') }}"{% if request.endpoint in ['my_orders', 'order_detail', 'track'] %} aria-current="page"{% endif %}>My Orders{% if active_orders_count %} <span class="customer-menu-count">{{ active_orders_count }}</span>{% endif %}</a>
+        <a href="{{ url_for('feedback') }}"{% if request.endpoint == 'feedback' %} aria-current="page"{% endif %}>Feedback{% if pending_feedback_count %} <span class="customer-menu-count">{{ pending_feedback_count }}</span>{% endif %}</a>
+      </nav>
+    </div>
+    {% endif %}
+  </div>
+</nav>
+{% endif %}
+<main class="{% if request.endpoint in ['login', 'admin_login', 'forgot_password', 'verify_otp'] %}login-page-container{% else %}container py-4{% if current_user and current_user.role == 'admin' %} admin-page-container{% endif %}{% endif %}{% if request.endpoint in floating_endpoints %} floating-page-overlay{% endif %}">
+  {% if request.endpoint in floating_endpoints %}
+  <section class="floating-page-dialog" data-floating-dialog role="dialog" aria-modal="true" aria-labelledby="floatingPageTitle" tabindex="-1">
+    <header class="floating-page-header">
+      <div class="floating-page-title">
+        <span class="customer-profile-modal-icon" aria-hidden="true">✿</span>
+        <h1 id="floatingPageTitle">{% if request.endpoint == 'product_detail' %}Bouquet details{% elif request.endpoint == 'order_detail' %}Order details{% elif request.endpoint == 'my_orders' %}My Orders{% elif request.endpoint in ['notifications', 'admin_notifications'] %}Notifications{% elif request.endpoint == 'checkout' %}Checkout{% elif request.endpoint == 'custom_order' %}Custom bouquet{% elif request.endpoint == 'customer_chat' %}Chat with us{% elif request.endpoint == 'feedback' %}Feedback{% elif request.endpoint == 'track' %}Track order{% elif request.endpoint == 'wishlist' %}Wishlist{% else %}Shopping Cart{% endif %}</h1>
+      </div>
+      <a class="customer-profile-modal-close" href="{{ url_for('home') }}" aria-label="Close and return to the store">×</a>
+    </header>
+    <div class="floating-page-content">
+  {% endif %}
+  {% if request.endpoint not in ['home', 'login', 'admin_login', 'forgot_password', 'verify_otp'] and request.endpoint not in floating_endpoints %}
+  <div class="page-back-row">
+    <button class="page-back-button" type="button" data-back-home="{{ url_for('home') }}">
+      <span aria-hidden="true">←</span> Back
+    </button>
+  </div>
+  {% endif %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% set flash_container_class = 'profile-modal-flashes' if request.endpoint == 'customer_profile' else 'admin-flashes' if current_user and current_user.role == 'admin' else '' %}
+    <div{% if flash_container_class %} class="{{ flash_container_class }}"{% endif %}>
+    {% for category,message in messages %}
+    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">{{ message }}<button class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>
+    {% endfor %}
+    </div>
+  {% endwith %}
+  {% block content %}{% endblock %}
+    {% if request.endpoint in floating_endpoints %}
+      </div>
+    </section>
+    {% endif %}
+</main>
+{% if request.endpoint not in ['login', 'admin_login', 'forgot_password', 'verify_otp'] %}
+<footer class="site-footer mt-5 py-4">
+  <div class="container d-flex flex-column flex-sm-row justify-content-between gap-2 text-secondary small">
+    <span>© FuzzyWire Bouquet</span>
+    <div class="d-flex flex-wrap gap-3">
+      <a href="{{ url_for('terms') }}">Terms and Conditions</a>
+      <a href="{{ url_for('privacy') }}">Privacy Policy</a>
+      <span>Thoughtful flowers, made with care.</span>
+    </div>
+  </div>
+</footer>
+{% endif %}
+{% if request.endpoint not in ['home', 'login', 'forgot_password', 'verify_otp'] %}
+<button class="floating-back-button" type="button" data-back-home="{{ url_for('home') }}" aria-label="Go back to the previous page">
+  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M19 12H5m0 0 6-6m-6 6 6 6"></path>
+  </svg>
+  <span>Back</span>
+</button>
+{% endif %}
+{% if current_user and current_user.role == 'customer' and request.endpoint != 'customer_chat' %}
+<div class="chat-widget" id="customerChatWidget">
+  <button class="chat-widget-launcher" id="chatWidgetToggle" type="button" aria-expanded="false" aria-controls="customerChatWindow" aria-label="Open chat with FuzzyWire">
+    <svg class="chat-widget-launch-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5 8.2 8.2 0 0 1-3.3-.7L4 20l1.5-4.2a7.4 7.4 0 0 1-1-3.8 7.5 7.5 0 1 1 15.5-.5Z"></path>
+      <path d="M8.5 11h.01M12 11h.01M15.5 11h.01"></path>
+    </svg>
+    <svg class="chat-widget-close-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="m6 6 12 12M18 6 6 18"></path>
+    </svg>
+    <span class="chat-widget-launch-label">Chat with us</span>
+  </button>
+  <div class="chat-widget-window" id="customerChatWindow" hidden>
+    {% set current_role = 'customer' %}
+    {% set conversation_id = none %}
+    {% set is_chat_widget = true %}
+    {% include '_chat_panel.html' %}
+  </div>
+</div>
+{% endif %}
+<aside class="cookie-privacy-banner" id="cookiePrivacyBanner" role="region" aria-label="Cookie and Privacy Notice" hidden>
+  <div class="cookie-privacy-card">
+    <div class="cookie-privacy-body">
+      <div class="cookie-privacy-badge" aria-hidden="true">🍪</div>
+      <div class="cookie-privacy-text">
+        <strong class="cookie-privacy-headline">Essential Cookies &amp; Privacy</strong>
+        <p class="cookie-privacy-message mb-0">
+          We use essential cookies to maintain secure login sessions, protect your account, and keep track of your shopping cart. We do not use advertising or tracking cookies.
+          <a class="cookie-privacy-learn-more" href="{{ url_for('privacy') }}">Learn More</a>
+        </p>
+      </div>
+    </div>
+    <div class="cookie-privacy-actions">
+      <button class="btn btn-pink btn-sm cookie-privacy-btn" id="cookiePrivacyDismiss" type="button">Got it</button>
+    </div>
+  </div>
+</aside>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% if request.endpoint in ['track', 'order_detail', 'customer_custom_detail', 'admin_order_detail', 'admin_custom_detail'] %}
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" defer></script>
+<script src="{{ url_for('static', filename='js/delivery-map.js', v='shop-address-map-v3') }}" defer></script>
+{% elif request.endpoint == 'shop_location' %}
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" defer></script>
+<script src="{{ url_for('static', filename='js/shop-location-map.js', v='shop-address-map-v1') }}" defer></script>
+{% elif request.endpoint == 'admin_shop_location' %}
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" defer></script>
+<script src="{{ url_for('static', filename='js/admin-shop-location.js', v='draggable-shop-location-v2') }}" defer></script>
+{% elif request.endpoint in ['checkout', 'custom_order'] %}
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" defer></script>
+<script src="{{ url_for('static', filename='js/delivery-selection-map.js', v='covered-towns-v1') }}" defer></script>
+{% endif %}
+{% if config.get('DEV_AUTO_RELOAD') %}
+<script src="{{ url_for('static', filename='js/live-reload.js') }}"
+        data-reload-url="{{ url_for('development_live_reload') }}"
+        data-version="{{ dev_reload_version }}" defer></script>
+{% endif %}
+<script src="{{ url_for('static', filename='js/site.js', v='mobile-clipboard-nav-v4') }}" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

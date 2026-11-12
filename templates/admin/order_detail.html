@@ -1,0 +1,168 @@
+{% extends 'admin/base_admin.html' %}
+{% from '_payment_status.html' import payment_status_badge %}
+{% block title %}Order Detail{% endblock %}
+{% block admin_content %}
+<div class="admin-page-heading">
+  <div>
+    <p class="eyebrow mb-1">ORDER DETAILS</p>
+    <h1 class="h2 fw-bold mb-1">Order #{{ order.id }}</h1>
+    <p class="small text-secondary mb-0">Placed {{ order.created_at }} · {{ order.customer_name }}</p>
+  </div>
+  <a class="btn btn-outline-pink" href="{{ url_for('admin_orders') }}">Back to orders</a>
+</div>
+<section class="admin-detail-summary-grid" aria-label="Order summary">
+  <div><span>Order status</span><strong><span class="badge rounded-pill {{ 'text-bg-success' if order.order_status == 'Delivered' else 'text-bg-danger' if order.order_status == 'Cancelled' else 'text-bg-warning' }}">{{ 'Ready for Pickup' if order.fulfillment_method == 'Pickup' and order.order_status == 'Ready for Delivery' else order.order_status }}</span></strong></div>
+  <div><span>Customer</span><strong>{{ order.customer_name }}</strong></div>
+  <div><span>Total</span><strong>₱{{ '%.2f'|format(order.total) }}</strong></div>
+  <div><span>Payment</span><strong>{{ order.payment_method }} · {{ payment_status_badge(order.payment_status, order.payment_method) }}</strong></div>
+</section>
+<div class="panel p-4 mb-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <h2 class="h5 mb-0">Customer and delivery</h2>
+    <button class="btn btn-outline-pink" type="button" data-bs-toggle="modal"
+            data-bs-target="#adminWaybillModal">Print delivery details</button>
+  </div>
+  <p>{{ order.customer_name }} · {{ order.customer_email }} · {{ order.phone }}</p>
+  <p><strong>{{ 'Pickup location' if order.fulfillment_method == 'Pickup' else 'Delivery address' }}:</strong> {{ order.delivery_address }}</p>
+  {% if scheduled_slot %}<p><strong>Scheduled {{ scheduled_slot.fulfillment_method|lower }}:</strong> {{ scheduled_slot.starts_at.strftime('%b %d, %Y %I:%M %p') }}</p>{% endif %}
+  {% if order.gift_message %}<p><strong>Gift message:</strong> {{ order.gift_message }}</p>{% endif %}
+  {% if order.fulfillment_method == 'Delivery' %}
+  <p><strong>Estimated delivery distance:</strong> {% if order.delivery_distance_km|float > 0 %}{{ '%.1f'|format(order.delivery_distance_km) }} km{% else %}Estimate unavailable{% endif %}</p>
+  {% if order.delivery_notes %}<p><strong>Delivery notes:</strong> {{ order.delivery_notes }}</p>{% endif %}
+  {% endif %}
+  <h2 class="h5 mt-4">Items</h2>
+  <table class="table">
+    {% for i in items %}
+    <tr><td>{{ i.item_name }} / {{ i.color }}</td><td>×{{ i.quantity }}</td><td>₱{{ '%.2f'|format(i.line_total) }}</td></tr>
+    {% endfor %}
+  </table>
+  <p>Flowers subtotal ₱{{ '%.2f'|format(order.subtotal) }}{% if order.fulfillment_method == 'Pickup' %} + Shop pickup (free){% else %} + Delivery fee{% if order.delivery_distance_km|float > 0 %} ({{ '%.1f'|format(order.delivery_distance_km) }} km){% else %} (estimate unavailable){% endif %} ₱{{ '%.2f'|format(order.delivery_fee) }}{% endif %}</p>
+  {% if order.discount_amount %}<p><strong>Promo {{ order.promo_code }}:</strong> −₱{{ '%.2f'|format(order.discount_amount) }}</p>{% endif %}
+  <h3 class="h4">Total ₱{{ '%.2f'|format(order.total) }}</h3>
+  <p>Payment: {{ order.payment_method }} — {{ payment_status_badge(order.payment_status, order.payment_method) }}</p>
+  {% if order.payment_method == 'GCash' %}
+  <section class="gcash-review-panel panel p-3 mb-3" aria-labelledby="gcashReviewTitle">
+    <h2 class="h5 fw-bold" id="gcashReviewTitle">GCash proof review</h2>
+    <p class="mb-2">Order total: <strong>₱{{ '%.2f'|format(order.total) }}</strong></p>
+    {% if order.payment_proof_filename %}
+    <a href="{{ payment_proof_url }}" target="_blank" rel="noopener">
+      <img class="payment-proof-review-image" src="{{ payment_proof_url }}" alt="Customer's GCash payment proof for order {{ order.id }}">
+    </a>
+    <p class="small text-secondary mt-2">Uploaded {{ order.payment_proof_uploaded_at }}{% if order.payment_reviewed_at %} · reviewed {{ order.payment_reviewed_at }}{% endif %}</p>
+    {% if order.payment_review_note %}<p class="alert alert-info"><strong>Review note:</strong> {{ order.payment_review_note }}</p>{% endif %}
+    {% if order.payment_status == 'Pending' %}
+    <form method="post" action="{{ url_for('admin_review_payment', order_type='Order', order_id=order.id, decision='approve') }}" class="mb-2">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label class="form-label" for="gcashReviewNote">Optional note for customer</label>
+      <textarea class="form-control mb-2" id="gcashReviewNote" name="review_note" rows="2" maxlength="1000"></textarea>
+      <button class="btn btn-success" type="submit" data-confirm="Approve this payment and mark the order Paid?">Approve payment</button>
+    </form>
+    <form method="post" action="{{ url_for('admin_review_payment', order_type='Order', order_id=order.id, decision='reject') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label class="form-label" for="gcashRejectNote">Reason for rejection</label>
+      <textarea class="form-control mb-2" id="gcashRejectNote" name="review_note" rows="2" maxlength="1000" required></textarea>
+      <button class="btn btn-outline-danger" type="submit" data-confirm="Reject this receipt? The customer can upload a corrected one.">Reject receipt</button>
+    </form>
+    {% endif %}
+    {% else %}
+    <p class="alert alert-warning mb-0">No payment proof uploaded yet. Do not confirm or prepare until proof is reviewed and marked Paid.</p>
+    {% endif %}
+  </section>
+  {% endif %}
+  <section class="border-top pt-3 mt-3">
+    <h2 class="h6 fw-bold">Refunds</h2>
+    <p class="small text-secondary">This records the refund here. Send the actual payment separately.</p>
+    {% for refund in refunds %}
+    <div class="border rounded-3 p-2 mb-2"><strong>₱{{ '%.2f'|format(refund.amount) }} · {{ refund.status }}</strong><div class="small">{{ refund.reason }}</div><div class="small text-secondary">{{ refund.created_at }}</div>
+      {% if refund.status == 'Recorded' %}<form method="post" action="{{ url_for('admin_refund_complete', order_id=order.id, refund_id=refund.id) }}" class="mt-2"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-secondary">Mark refund completed</button></form>{% endif %}
+    </div>
+    {% else %}<p class="small text-secondary">No refund records.</p>{% endfor %}
+    {% if order.payment_status in ['Paid','Refunded'] %}
+    <form method="post" action="{{ url_for('admin_refund_add', order_id=order.id) }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><div class="row g-2">
+        <div class="col-md-4"><label class="form-label small" for="refundAmount">Amount</label><input class="form-control form-control-sm" id="refundAmount" name="amount" type="number" min="0.01" max="{{ order.total }}" step="0.01" required></div>
+        <div class="col-md-8"><label class="form-label small" for="refundReason">Reason</label><input class="form-control form-control-sm" id="refundReason" name="reason" maxlength="1000" required></div>
+      </div><button class="btn btn-sm btn-outline-pink mt-2">Record refund</button>
+    </form>
+    {% endif %}
+  </section>
+  {% if order.cancellation_reason %}
+  <p class="alert alert-warning"><strong>Cancellation reason:</strong> {{ order.cancellation_reason }}</p>
+  {% endif %}
+  <section class="border-top pt-3 mt-3" aria-labelledby="internalNotesTitle">
+    <h2 class="h6 fw-bold" id="internalNotesTitle">Staff notes (private)</h2>
+    {% for note in admin_notes %}<div class="small border rounded-3 p-2 mb-2"><strong>{{ note.admin_name or 'Admin' }} · {{ note.created_at }}</strong><p class="mb-0 mt-1">{{ note.note }}</p></div>{% else %}<p class="small text-secondary">No internal notes.</p>{% endfor %}
+    <form method="post" action="{{ url_for('admin_order_note_add', order_type='Order', order_id=order.id) }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><label class="form-label small" for="internalOrderNote">Add a private note</label>
+      <textarea class="form-control mb-2" id="internalOrderNote" name="note" maxlength="2000" rows="2" required></textarea>
+      <button class="btn btn-sm btn-outline-pink">Save internal note</button>
+    </form>
+  </section>
+  {% set order_status = order.order_status %}
+  {% set fulfillment_method = order.fulfillment_method %}
+  {% include '_order_timeline.html' %}
+  {% if order.fulfillment_method == 'Pickup' or order.order_status != 'Cancelled' %}
+  {% set map_order_id = order.id %}
+  {% set map_order_status = order.order_status %}
+  {% set map_destination = order.delivery_address %}
+  {% set map_fulfillment_method = order.fulfillment_method %}
+  {% include '_delivery_map.html' %}
+  {% endif %}
+  <form method="post" class="row g-2" data-confirm-on-cancel>
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="col-md-7">
+      <label class="form-label" for="orderStatus">Order status</label>
+      <select class="form-select" id="orderStatus" name="order_status" data-cancellation-status>
+        {% for s in statuses %}<option value="{{ s }}" {% if order.order_status==s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-5 align-self-end">
+      <button class="btn btn-pink">Update and notify customer</button>
+    </div>
+    <div class="col-12" data-cancellation-reason-field>
+      <label class="form-label" for="cancellationReason">Reason for cancellation</label>
+      <textarea class="form-control" id="cancellationReason" name="cancellation_reason"
+                rows="3" maxlength="1000" placeholder="Tell the customer why this order is being cancelled.">{{ order.cancellation_reason or '' }}</textarea>
+      <div class="form-text">Required when the order status is Cancelled.</div>
+    </div>
+  </form>
+</div>
+
+<div class="modal fade admin-waybill-modal" id="adminWaybillModal" tabindex="-1"
+     aria-labelledby="adminWaybillTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title h5 fw-bold" id="adminWaybillTitle">Delivery waybill</h2>
+        <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <article class="admin-waybill-paper">
+          <header class="waybill-heading">
+            <div><p class="eyebrow mb-1">FUZZYWIRE BOUQUET</p><h3>Order #{{ order.id }}</h3></div>
+            <span class="badge text-bg-light">{{ 'SHOP PICKUP' if order.fulfillment_method == 'Pickup' else 'DELIVERY' }}</span>
+          </header>
+          <section class="waybill-recipient">
+            <div><span>Recipient</span><strong>{{ order.customer_name }}</strong></div>
+            <div><span>Contact</span><strong>{{ order.phone }}</strong></div>
+            <div class="waybill-address"><span>{{ 'Pickup location' if order.fulfillment_method == 'Pickup' else 'Delivery address' }}</span><strong>{{ order.delivery_address }}</strong></div>
+            {% if scheduled_slot %}<div class="waybill-address"><span>Scheduled {{ scheduled_slot.fulfillment_method|lower }}</span><strong>{{ scheduled_slot.starts_at.strftime('%b %d, %Y %I:%M %p') }}</strong></div>{% endif %}
+            {% if order.delivery_notes %}<div class="waybill-address"><span>Delivery instructions</span><strong>{{ order.delivery_notes }}</strong></div>{% endif %}
+            {% if order.gift_message %}<div class="waybill-address"><span>Gift message</span><strong>{{ order.gift_message }}</strong></div>{% endif %}
+          </section>
+          <h4 class="h6 fw-bold mt-4">Bouquets to prepare</h4>
+          <table class="table waybill-items">
+            <thead><tr><th>Item</th><th>Color</th><th class="text-center">Qty</th></tr></thead>
+            <tbody>{% for i in items %}<tr><td>{{ i.item_name }}</td><td>{{ i.color or 'Bouquet' }}</td><td class="text-center">{{ i.quantity }}</td></tr>{% endfor %}</tbody>
+          </table>
+          <div class="waybill-footer"><span>Order status: <strong>{{ 'Ready for Pickup' if order.fulfillment_method == 'Pickup' and order.order_status == 'Ready for Delivery' else order.order_status }}</strong></span><span>Order date: {{ order.created_at }}</span></div>
+        </article>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Close</button>
+        <button class="btn btn-pink" type="button" data-print-waybill>Print waybill</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

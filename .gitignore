@@ -1,0 +1,8 @@
+.env
+!.env.example
+venv/
+__pycache__/
+*.py[cod]
+_backup/
+static/uploads/*
+private_uploads/

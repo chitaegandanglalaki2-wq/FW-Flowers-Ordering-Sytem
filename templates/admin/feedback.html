@@ -1,0 +1,70 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Feedback Management{% endblock %}
+{% block admin_content %}
+<div class="admin-page-heading">
+  <div>
+    <p class="eyebrow mb-1">CUSTOMER REVIEWS</p>
+    <h1 class="h2 fw-bold mb-1">Reviews</h1>
+    <p class="text-secondary mb-0">Read and reply to reviews customers leave after an order.</p>
+  </div>
+</div>
+<div class="row g-3 mb-4">
+  <div class="col-sm-6">
+    <div class="stat-card">
+      <div class="small text-secondary">Bouquet reviews</div>
+      <div class="fs-4 fw-bold">{{ summary.total }}</div>
+    </div>
+  </div>
+  <div class="col-sm-6">
+    <div class="stat-card">
+      <div class="small text-secondary">Average rating</div>
+      <div class="fs-4 fw-bold"><span class="review-stars">★</span> {{ '%.1f'|format(summary.avg_rating) }} / 5</div>
+    </div>
+  </div>
+</div>
+<div class="panel p-3 p-md-4">
+  <div class="admin-table-toolbar">
+    <label class="admin-search-field">
+      <span aria-hidden="true">⌕</span>
+      <span class="visually-hidden">Search feedback</span>
+      <input class="form-control" type="search" placeholder="Search customer, bouquet, or feedback"
+             data-admin-search="#adminFeedbackTable" data-admin-search-empty="#adminFeedbackSearchEmpty">
+    </label>
+    <span class="small text-secondary">{{ summary.total }} reviews</span>
+  </div>
+  <div class="table-responsive">
+  <table class="table align-middle" id="adminFeedbackTable">
+    <thead><tr><th>Customer</th><th>Bouquet</th><th>Order</th><th>Rating</th><th>Feedback &amp; reply</th><th>Date</th></tr></thead>
+    <tbody>
+      {% for f in feedback %}
+      <tr id="feedback-{{ f.id }}">
+        <td>{{ f.full_name }}<div class="small text-secondary">{{ f.email }}</div></td>
+        <td>{{ f.item_name or 'Bouquet no longer available' }}</td>
+        <td>{{ '#' ~ f.order_id if f.order_id else '—' }}</td>
+        <td><span class="review-stars" aria-label="{{ f.rating }} out of 5 stars">{{ '★' * f.rating }}{{ '☆' * (5-f.rating) }}</span></td>
+        <td class="feedback-comment">
+          <p class="mb-2">{{ f.comment }}</p>
+          {% if f.admin_reply %}<div class="feedback-admin-reply"><strong>Admin reply</strong><p class="mb-0">{{ f.admin_reply }}</p></div>{% endif %}
+          <form method="post" action="{{ url_for('admin_feedback_reply', feedback_id=f.id) }}" class="feedback-reply-form">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <label class="form-label small fw-semibold" for="feedbackReply{{ f.id }}">{{ 'Update reply' if f.admin_reply else 'Reply to customer' }}</label>
+            <textarea class="form-control form-control-sm" id="feedbackReply{{ f.id }}" name="admin_reply" rows="2" maxlength="2000" placeholder="Write a helpful response">{{ f.admin_reply or '' }}</textarea>
+            <button class="btn btn-sm btn-outline-pink mt-2" type="submit">{{ 'Save reply' if f.admin_reply else 'Send reply' }}</button>
+          </form>
+          <form method="post" action="{{ url_for('admin_feedback_delete', feedback_id=f.id) }}" class="mt-2"
+                data-confirm-message="Permanently delete this customer review?">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-outline-secondary" type="submit">Delete review</button>
+          </form>
+        </td>
+        <td>{{ f.created_at }}</td>
+      </tr>
+      {% else %}
+      <tr data-empty-row><td class="text-secondary py-4" colspan="6">No customer feedback yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="small text-secondary text-center mt-3 mb-0" id="adminFeedbackSearchEmpty" hidden>No feedback matches your search.</p>
+</div>
+{% endblock %}

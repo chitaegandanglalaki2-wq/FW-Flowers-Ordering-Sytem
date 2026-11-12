@@ -1,0 +1,45 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Custom Bouquets{% endblock %}
+{% block admin_content %}
+<div class="admin-page-heading">
+  <div>
+    <p class="eyebrow mb-1">MADE TO ORDER</p>
+    <h1 class="h2 fw-bold mb-1">Custom bouquet requests</h1>
+    <p class="text-secondary mb-0">Review each design, customer note, payment, and delivery choice.</p>
+  </div>
+</div>
+<section class="panel p-3 p-md-4">
+  {% if orders %}
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead><tr><th>Request</th><th>Customer</th><th>Design</th><th>Picture</th><th>Total</th><th>Status</th><th>Details</th></tr></thead>
+      <tbody>
+        {% for order in orders %}
+        <tr>
+          <td><strong>#C{{ order.id }}</strong><div class="small text-secondary">{{ order.created_at }}</div></td>
+          <td>{{ order.full_name }}<div class="small text-secondary">{{ order.email }}</div></td>
+          <td>{{ order.flower_type }} · {{ order.flower_color }}<div class="small text-secondary">{{ order.bouquet_size }} · {{ order.wrapping_style }} · Qty {{ order.quantity }}</div></td>
+          <td>
+            {% if order.reference_image %}
+            <img class="tiny-image" src="{{ url_for('static', filename='uploads/'+order.reference_image) }}" alt="Customer's bouquet reference">
+            {% elif order.drawing_image %}
+            <img class="tiny-image" src="{{ url_for('static', filename='uploads/'+order.drawing_image) }}" alt="Customer's bouquet drawing">
+            {% else %}<span class="small text-secondary">No picture</span>{% endif %}
+          </td>
+          <td class="fw-semibold">₱{{ '%.2f'|format(order.total_price) }}</td>
+          <td><span class="badge rounded-pill {{ 'text-bg-success' if order.status in ['Delivered', 'Picked Up'] else 'text-bg-danger' if order.status == 'Cancelled' else 'text-bg-warning' }}">{{ order.status }}</span></td>
+          <td><a class="btn btn-sm btn-outline-pink" href="{{ url_for('admin_custom_detail', custom_id=order.id) }}">View Details</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="orders-empty-state">
+    <span aria-hidden="true">✿</span>
+    <h2 class="h5 fw-bold">No custom requests yet</h2>
+    <p class="text-secondary mb-0">Customer designs will show here when submitted.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

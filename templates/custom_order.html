@@ -1,0 +1,253 @@
+{% extends 'base.html' %}
+{% block title %}Custom Bouquet{% endblock %}
+{% block content %}
+<div class="mb-4"><p class="eyebrow">DESIGN YOUR OWN</p><h1 class="h2 fw-bold">Custom Order / Bouquet Customization</h1><p class="text-secondary">Upload a reference photo or draw your design. The admin will see the design with your request.</p></div>
+<form method="post" enctype="multipart/form-data" id="customForm">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="drawing_data" id="drawingData">
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <section class="panel p-4 mb-4">
+        <h2 class="h5 fw-bold">1. Upload or Draw Your Design</h2>
+        <div class="nav nav-pills gap-2 mb-3"><button class="nav-link active" type="button" data-mode="upload">Upload Image</button><button class="nav-link" type="button" data-mode="draw">Draw / Paint</button></div>
+        <div id="uploadPanel"><label class="form-label">Choose a reference image (PNG/JPG/WEBP, max 8 MB)</label><input class="form-control" type="file" name="reference_image" id="referenceImage" accept=".png,.jpg,.jpeg,.webp,image/*"><img id="imagePreview" class="design-preview mt-3 d-none" alt="Image preview"></div>
+        <div id="drawPanel" class="d-none"><div class="d-flex gap-3 align-items-center flex-wrap mb-2"><label class="small">Color <input type="color" id="brushColor" value="#e94375" class="form-control form-control-color"></label><label class="small">Brush <input type="range" id="brushSize" min="2" max="24" value="5" class="form-range"></label><button class="btn btn-outline-secondary btn-sm" type="button" id="erase">Eraser</button><button class="btn btn-outline-secondary btn-sm" type="button" id="clear">Clear</button></div><canvas id="canvas" width="700" height="420"></canvas><p class="small text-secondary mt-2">Draw with your mouse or finger. Your drawing will be saved with your order.</p></div>
+      </section>
+      <section class="panel p-4">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h2 class="h5 fw-bold mb-0">2. Choose Flowers &amp; Details</h2>
+          <span class="badge bg-pink-subtle text-pink fw-semibold">Fuzzy Wire Bouquet Menu</span>
+        </div>
+        <p class="small text-secondary mb-3">Customise your flowers, bouquet color, flower count, and arrangement style matching our official bouquet menu.</p>
+
+        <!-- FLOWERS -->
+        <label class="form-label fw-bold">Flowers <span class="text-pink">♥</span></label>
+        <div class="row g-2 mb-3">
+          {% for fl in custom_flowers|default(['Tulips', 'Gerbera', 'Lily', 'Rose', 'Sunflower']) %}
+          <div class="col-4 col-sm">
+            <input class="btn-check" type="radio" name="flower_type" id="fl_{{ loop.index }}" value="{{ fl }}" {% if loop.first %}checked{% endif %}>
+            <label class="option-card w-100 text-center py-2 px-1" for="fl_{{ loop.index }}">
+              <span class="d-block fs-4">
+                {% if fl == 'Tulips' %}🌷{% elif fl == 'Gerbera' %}🌸{% elif fl == 'Lily' %}💮{% elif fl == 'Rose' %}🌹{% else %}🌻{% endif %}
+              </span>
+              <strong class="d-block small mt-1">{{ fl }}</strong>
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- COLORS -->
+        <label class="form-label fw-bold" for="flowerColor">Colors <span class="text-pink">♥</span></label>
+        <select class="form-select mb-3" id="flowerColor" name="flower_color" required>
+          {% for color in bouquet_colors %}
+          <option value="{{ color }}" {% if color == 'Pink' %}selected{% endif %}>
+            {{ color }} {% if color == 'Blue' %}💙{% elif color == 'Pink' %}💗{% elif color == 'Violet White' %}🤍{% elif color == 'Green' %}💚{% endif %}
+          </option>
+          {% endfor %}
+        </select>
+
+        <!-- PRICELIST / FLOWER COUNT (TIERS) -->
+        <div class="d-flex justify-content-between align-items-baseline mb-1">
+          <label class="form-label fw-bold mb-0">Pricelist / Flower Count <span class="text-pink">♥</span></label>
+          <small class="text-secondary">Official Tiers</small>
+        </div>
+        <div class="row g-2 mb-3">
+          {% for tier_name, tier_price in (custom_tiers or {}).items() %}
+          <div class="col-6 col-sm-4">
+            <input class="btn-check" type="radio" name="bouquet_size" id="tier_{{ loop.index }}" value="{{ tier_name }}" data-price="{{ tier_price }}" {% if tier_name == '1 pc' %}checked{% endif %}>
+            <label class="option-card w-100 p-2" for="tier_{{ loop.index }}">
+              <strong>{{ tier_name }}</strong><br>
+              <span class="text-pink fw-semibold">
+                {% if tier_name == '15 pcs above' %}
+                  ₱{{ '%.2f'|format(tier_price) }} <small class="d-block text-secondary">(chat nalang!)</small>
+                {% else %}
+                  ₱{{ '%.2f'|format(tier_price) }}
+                {% endif %}
+              </span>
+            </label>
+          </div>
+          {% else %}
+          {% for tier_name, tier_price in [('1 pc', 120), ('3 pcs', 220), ('4 pcs', 270), ('6-7 pcs', 420), ('8-12 pcs', 520), ('15 pcs above', 520)] %}
+          <div class="col-6 col-sm-4">
+            <input class="btn-check" type="radio" name="bouquet_size" id="tier_{{ loop.index }}" value="{{ tier_name }}" data-price="{{ tier_price }}" {% if loop.first %}checked{% endif %}>
+            <label class="option-card w-100 p-2" for="tier_{{ loop.index }}">
+              <strong>{{ tier_name }}</strong><br>
+              <span class="text-pink fw-semibold">₱{{ '%.2f'|format(tier_price) }}{% if tier_name == '15 pcs above' %} <small class="d-block text-secondary">(chat nalang!)</small>{% endif %}</span>
+            </label>
+          </div>
+          {% endfor %}
+          {% endfor %}
+        </div>
+
+        <!-- ARRANGEMENT / ROUND BOUQUET -->
+        <label class="form-label fw-bold">Arrangement Style <span class="text-pink">♥</span></label>
+        <div class="row g-2 mb-3">
+          {% for arr in custom_arrangements|default(['Standard Bouquet', 'Round Bouquet']) %}
+          <div class="col-6">
+            <input class="btn-check" type="radio" name="wrapping_style" id="arr_{{ loop.index }}" value="{{ arr }}" data-price="0" {% if loop.first %}checked{% endif %}>
+            <label class="option-card w-100 p-2 text-center" for="arr_{{ loop.index }}">
+              <strong>{{ arr }}</strong>
+              {% if arr == 'Round Bouquet' %}
+              <small class="d-block text-secondary">"We also have a round bouquet!"</small>
+              {% else %}
+              <small class="d-block text-secondary">Classic bouquet arrangement</small>
+              {% endif %}
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+
+        <label class="form-label fw-bold" for="quantity">Bouquet quantity</label>
+        <div class="input-group quantity-stepper mb-3" style="max-width: 160px;">
+          <button class="btn btn-outline-pink stepper-btn" type="button" data-stepper-btn="down" data-target="quantity" aria-label="Decrease quantity">−</button>
+          <input class="form-control text-center fw-bold" type="number" name="quantity" id="quantity" value="1" min="1" max="20" step="1" required>
+          <button class="btn btn-outline-pink stepper-btn" type="button" data-stepper-btn="up" data-target="quantity" aria-label="Increase quantity">+</button>
+        </div>
+
+        <label class="form-label" for="customMessage">Notes for the florist <span class="text-secondary">(optional)</span></label>
+        <textarea class="form-control" id="customMessage" name="custom_message" maxlength="500" rows="3" placeholder="Add any special instructions or custom details for your bouquet..."></textarea>
+      </section>
+      <section class="panel p-4 mt-4">
+        <h2 class="h5 fw-bold">3. Delivery &amp; payment</h2>
+        <label class="form-label" for="customPhone">Contact number</label>
+        <input class="form-control mb-3" id="customPhone" name="phone" type="tel" maxlength="30" autocomplete="tel" value="{{ profile.phone or '' }}" required>
+        <fieldset class="mb-3">
+          <legend class="form-label">Fulfillment</legend>
+          <div class="payment-options">
+            <label class="payment-option"><input class="form-check-input" type="radio" name="fulfillment_method" value="Delivery" checked><span><strong>Delivery</strong><small>Laguna only: free in Cavinti; ₱{{ '%.2f'|format(outside_local_delivery_fee) }} in other Laguna municipalities.</small></span></label>
+            <label class="payment-option"><input class="form-check-input" type="radio" name="fulfillment_method" value="Pickup"><span><strong>Pickup</strong><small>{{ shop_location.shop_name }} · {{ shop_location.address }} · Free · <a href="{{ url_for('shop_location') }}">View map</a></small></span></label>
+          </div>
+        </fieldset>
+        <div data-custom-delivery-fields>
+          <h3 class="h6 fw-bold">Delivery address</h3>
+          {% include '_delivery_location_selector.html' %}
+          {% if has_usable_saved_address %}
+          <fieldset class="panel p-3 mb-3">
+            <legend class="form-label fw-semibold">Choose an address</legend>
+            <label class="checkout-address-choice"><input class="form-check-input" type="radio" name="delivery_address_choice" value="saved" checked><span><strong>Use saved profile address</strong><small>{{ profile.delivery_address }}</small></span></label>
+            <label class="checkout-address-choice mt-2"><input class="form-check-input" type="radio" name="delivery_address_choice" value="new"><span><strong>Use a different address</strong></span></label>
+          </fieldset>
+          {% endif %}
+          {% if profile.delivery_address and not has_usable_saved_address %}
+          <p class="small text-warning">Saved address is outside the covered delivery towns (Cavinti, Lumban, Kalayaan, Pagsanjan, Santa Cruz, Pila). Enter a covered address or choose pickup.</p>
+          {% endif %}
+          <div {% if has_usable_saved_address %}hidden{% endif %} data-custom-address-fields>
+            {% set address_values = profile if has_usable_saved_address else {} %}
+            {% set address_required = true %}
+            {% set address_disabled = has_usable_saved_address %}
+            {% set address_prefix = 'customAddress' %}
+            {% set address_allowed_province_code = laguna_province_code %}
+            {% set address_allowed_city_codes = allowed_delivery_city_codes_csv %}
+            {% include '_philippine_address_fields.html' %}
+          </div>
+          <label class="form-check small mt-3"><input class="form-check-input" id="customManualDistanceToggle" name="use_manual_distance" type="checkbox"><span class="form-check-label">Enter a manual distance instead of using the map estimate (optional).</span></label>
+          <label class="form-label mt-2" for="customManualDistance">Manual distance override (km)</label>
+          <input class="form-control mb-2" id="customManualDistance" name="delivery_distance_km" type="number" min="0.1" max="{{ delivery_distance_max_km }}" step="0.1" placeholder="Optional manual distance" disabled>
+          <p class="small text-secondary">Delivery is available exclusively in Cavinti (free), Lumban, Kalayaan, Pagsanjan, Santa Cruz, and Pila (₱{{ '%.2f'|format(outside_local_delivery_fee) }}). If the map cannot estimate your distance, you can still submit your order using this address.</p>
+        </div>
+        <div class="alert alert-info" data-custom-pickup-details hidden><strong>Shop for Pick-up:</strong> {{ shop_location.shop_name }} · {{ shop_location.address }} — no delivery fee. <a href="{{ url_for('shop_location') }}">View map</a></div>
+        <label class="form-label" for="customDeliverySlot">Schedule <span class="text-secondary">(optional)</span></label>
+        <select class="form-select mb-3" id="customDeliverySlot" name="delivery_slot_id">
+          <option value="">Deliver anytime / No preferred time</option>
+          <option value="Weekdays">Weekdays</option>
+          <option value="Weekends">Weekends</option>
+          {% for slot in delivery_slots %}<option value="{{ slot.id }}" data-method="{{ slot.fulfillment_method }}">{{ slot.fulfillment_method }} — {{ slot.starts_at.strftime('%b %d, %Y %I:%M %p') }} ({{ slot.remaining }} spots)</option>{% endfor %}
+        </select>
+        <fieldset>
+          <legend class="form-label">Payment</legend>
+          <div class="payment-options">
+            <label class="payment-option"><input class="form-check-input" type="radio" name="payment_method" value="Cash" checked><span><strong>Cash</strong><small data-custom-cash-label>Pay the rider on delivery.</small></span></label>
+            <label class="payment-option"><input class="form-check-input" type="radio" name="payment_method" value="GCash"><span><strong>GCash + payment proof</strong><small>Pay using the shop's GCash number, then upload your receipt from the order page.</small></span></label>
+          </div>
+        </fieldset>
+        <section class="gcash-payment-instructions panel p-3 mt-3" data-custom-gcash hidden>
+          <h3 class="h6 fw-bold">Shop GCash account</h3>
+          <p class="mb-1"><strong>{{ gcash.name }}</strong></p>
+          <p class="mb-1"><strong>Number:</strong> <span id="customCheckoutGcashNumber">{{ gcash.number }}</span>
+            <button class="btn btn-sm btn-outline-pink ms-2" type="button" data-copy-to="customCheckoutGcashNumber">Copy number</button>
+            <span class="small ms-2" data-copy-status aria-live="polite"></span>
+          </p>
+          {% include '_gcash_qr.html' %}
+          <p class="small mb-0">Submit the design first. Pay the final total shown on your order page and upload your screenshot for shop review.</p>
+        </section>
+      </section>
+    </div>
+    <div class="col-lg-5">
+      <aside class="panel p-4 sticky-lg-top" style="top:1rem">
+        <h2 class="h5 fw-bold">Live Price Preview</h2><div class="preview-art">🌷 🌹 🌼<div class="small mt-2">YOUR CUSTOM BOUQUET</div></div>
+        <div class="d-flex justify-content-between border-bottom py-3"><span>Flower</span><strong id="pFlower">Tulips</strong></div>
+        <div class="d-flex justify-content-between border-bottom py-3"><span>Color</span><strong id="pColor">Pink</strong></div>
+        <div class="d-flex justify-content-between border-bottom py-3"><span>Count / Tier</span><strong id="pSize">1 pc</strong></div>
+        <div class="d-flex justify-content-between border-bottom py-3"><span>Arrangement</span><strong id="pWrap">Standard Bouquet</strong></div>
+        <div class="d-flex justify-content-between py-3"><span>Design estimate</span><strong class="price" id="pTotal">₱120.00</strong></div>
+        <p class="small text-secondary">Delivery is free in Cavinti and ₱{{ '%.2f'|format(outside_local_delivery_fee) }} in other Laguna municipalities. The selected delivery municipality sets the fee.</p>
+        <p class="small text-info" id="chatNotice" hidden>For 15 pcs above, submit your request and chat with us for volume quotes.</p>
+        <button class="btn btn-pink btn-lg w-100" type="submit">Submit custom order</button>
+        <p class="small text-secondary mt-3 mb-0">The estimate uses our official menu prices. We handcraft each fuzzy wire bouquet to order!</p>
+      </aside>
+    </div>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}<script>
+const form=document.getElementById('customForm'), canvas=document.getElementById('canvas'), ctx=canvas.getContext('2d');
+let mode='upload', down=false, erase=false;
+ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.lineCap='round';ctx.lineJoin='round';
+function calc(){
+  const flower=form.querySelector('[name=flower_type]:checked');
+  const size=form.querySelector('[name=bouquet_size]:checked');
+  const wrap=form.querySelector('[name=wrapping_style]:checked');
+  const quantity=Math.max(1,Number(document.getElementById('quantity').value||1));
+  const tierPrice=Number(size?.dataset.price||120);
+  let total=tierPrice*quantity;
+
+  document.getElementById('pFlower').textContent=flower?.value||'Tulips';
+  document.getElementById('pColor').textContent=document.getElementById('flowerColor').value;
+  document.getElementById('pSize').textContent=size?.value||'1 pc';
+  document.getElementById('pWrap').textContent=wrap?.value||'Standard Bouquet';
+  document.getElementById('pTotal').textContent='₱'+total.toFixed(2);
+  const chatNotice=document.getElementById('chatNotice');
+  if(chatNotice){
+    chatNotice.hidden=!(size?.value==='15 pcs above');
+  }
+}
+const deliveryFields=document.querySelector('[data-custom-delivery-fields]');
+const pickupDetails=document.querySelector('[data-custom-pickup-details]');
+const distanceOverride=document.getElementById('customManualDistanceToggle');
+const distanceInput=document.getElementById('customManualDistance');
+const slotSelect=document.getElementById('customDeliverySlot');
+const addressChoices=form.querySelectorAll('input[name="delivery_address_choice"]');
+const updateFulfillment=()=>{
+  const isPickup=form.querySelector('[name="fulfillment_method"]:checked').value==='Pickup';
+  const isNewAddress=!addressChoices.length||form.querySelector('[name="delivery_address_choice"]:checked')?.value==='new';
+  deliveryFields.hidden=isPickup;
+  pickupDetails.hidden=!isPickup;
+  deliveryFields.querySelectorAll('[data-ph-region],[data-ph-province],[data-ph-city],[data-ph-barangay],input[name="delivery_street_address"]').forEach(field=>{
+    field.required=!isPickup&&isNewAddress;
+    field.disabled=isPickup||(!isNewAddress&&field.matches('[data-ph-region],[data-ph-province],[data-ph-city],[data-ph-barangay],input[name="delivery_street_address"]'));
+  });
+  const manualBarangay=deliveryFields.querySelector('[data-ph-barangay-manual]');
+  manualBarangay.required=!isPickup&&isNewAddress&&!manualBarangay.hidden;
+  distanceInput.disabled=isPickup||!distanceOverride.checked;
+  distanceInput.required=!isPickup&&distanceOverride.checked;
+  const method=isPickup?'Pickup':'Delivery';
+  [...slotSelect.options].forEach(option=>{option.disabled=Boolean(option.dataset.method&&option.dataset.method!==method)});
+  if(slotSelect.selectedOptions[0]?.disabled)slotSelect.value='';
+  document.querySelector('[data-custom-cash-label]').textContent=isPickup?'Pay at the shop when you pick up.':'Pay the rider on delivery.';
+};
+form.addEventListener('change',calc);form.addEventListener('input',calc);calc();
+form.querySelectorAll('[name="fulfillment_method"],[name="delivery_address_choice"],[name="payment_method"]').forEach(input=>input.addEventListener('change',()=>{
+  document.querySelector('[data-custom-gcash]').hidden=form.querySelector('[name="payment_method"]:checked').value!=='GCash';
+  updateFulfillment();
+}));
+distanceOverride.addEventListener('change',updateFulfillment);
+updateFulfillment();
+document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;document.querySelectorAll('[data-mode]').forEach(x=>x.classList.toggle('active',x===b));document.getElementById('uploadPanel').classList.toggle('d-none',mode!=='upload');document.getElementById('drawPanel').classList.toggle('d-none',mode!=='draw')});
+document.getElementById('referenceImage').onchange=e=>{let f=e.target.files[0],img=document.getElementById('imagePreview');if(!f){img.classList.add('d-none');return}if(f.size>8*1024*1024||!f.type.startsWith('image/')){alert('Choose an image under 8 MB.');e.target.value='';return}img.src=URL.createObjectURL(f);img.classList.remove('d-none')};
+function pos(e){let r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height}}
+canvas.onpointerdown=e=>{down=true;canvas.setPointerCapture(e.pointerId);let p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y)};
+canvas.onpointermove=e=>{if(!down)return;let p=pos(e);ctx.strokeStyle=erase?'#fff':document.getElementById('brushColor').value;ctx.lineWidth=+document.getElementById('brushSize').value;ctx.lineTo(p.x,p.y);ctx.stroke()};
+canvas.onpointerup=canvas.onpointercancel=()=>{down=false;ctx.beginPath()};
+document.getElementById('erase').onclick=()=>{erase=!erase;document.getElementById('erase').textContent=erase?'Brush':'Eraser'};
+document.getElementById('clear').onclick=()=>{ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height)};
+form.onsubmit=()=>{document.getElementById('drawingData').value=mode==='draw'?canvas.toDataURL('image/png'):''};
+</script>{% endblock %}

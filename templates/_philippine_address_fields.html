@@ -1,0 +1,77 @@
+<div class="row g-3 mb-3"
+     data-ph-address-selector
+     data-required="{{ 'true' if address_required else 'false' }}"
+     data-regions-url="{{ url_for('static', filename='data/regions.json') }}"
+     data-provinces-url="{{ url_for('static', filename='data/provinces.json') }}"
+     data-cities-url="{{ url_for('static', filename='data/cities.json') }}"
+     data-allowed-province-code="{{ address_allowed_province_code|default('') }}"
+     data-allowed-city-codes="{{ address_allowed_city_codes|default('') }}"
+     data-barangays-url-pattern="{{ url_for('philippines_barangays', city_code='CITY_CODE') }}">
+  <div class="col-12">
+    <label class="form-label" for="{{ address_prefix }}Street">House / building, street, or purok</label>
+    <input class="form-control" id="{{ address_prefix }}Street" name="delivery_street_address"
+           type="text" maxlength="500" autocomplete="address-line1"
+           value="{{ address_values.get('delivery_street_address') or '' }}"
+           placeholder="House number, street, subdivision, or purok"
+           {% if address_required %}required{% endif %}
+           {% if address_disabled %}disabled{% endif %}>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="{{ address_prefix }}Region">Region</label>
+    <select class="form-select" id="{{ address_prefix }}Region" name="delivery_region_code"
+            data-ph-region data-selected="{{ address_values.get('delivery_region_code') or '' }}"
+            {% if address_required %}required{% endif %}
+            {% if address_disabled %}disabled{% endif %}>
+      <option value="">Choose region</option>
+    </select>
+  </div>
+  <div class="col-md-6" data-ph-province-group hidden>
+    <label class="form-label" for="{{ address_prefix }}Province">Province</label>
+    <select class="form-select" id="{{ address_prefix }}Province" name="delivery_province_code"
+            data-ph-province data-selected="{{ address_values.get('delivery_province_code') or '' }}"
+            {% if address_disabled %}disabled{% endif %}>
+      <option value="">Choose province</option>
+    </select>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="{{ address_prefix }}City">City / municipality</label>
+    <select class="form-select" id="{{ address_prefix }}City" name="delivery_city_code"
+            data-ph-city data-selected="{{ address_values.get('delivery_city_code') or '' }}"
+            disabled {% if address_required %}required{% endif %}
+            {% if address_disabled %}disabled{% endif %}>
+      <option value="">Choose city / municipality</option>
+    </select>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="{{ address_prefix }}Barangay">Barangay</label>
+    <select class="form-select" id="{{ address_prefix }}Barangay" name="delivery_barangay_code"
+            data-ph-barangay data-selected="{{ address_values.get('delivery_barangay_code') or '' }}"
+            disabled {% if address_required %}required{% endif %}
+            {% if address_disabled %}disabled{% endif %}>
+      <option value="">Choose barangay</option>
+    </select>
+    <input class="form-control" id="{{ address_prefix }}BarangayManual"
+           name="delivery_barangay_name" data-ph-barangay-manual type="text"
+           data-selected="{{ address_values.get('delivery_barangay') or address_values.get('delivery_barangay_name') or '' }}"
+           maxlength="120" value="{{ address_values.get('delivery_barangay') or address_values.get('delivery_barangay_name') or '' }}"
+           placeholder="Enter barangay name" hidden {% if address_disabled %}disabled{% endif %}>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="{{ address_prefix }}Postal">ZIP / postal code <span class="text-secondary">(optional)</span></label>
+    <select class="form-select" id="{{ address_prefix }}Postal" name="delivery_postal_code"
+            data-ph-postal data-selected="{{ address_values.get('delivery_postal_code') or '' }}"
+            {% if address_disabled %}disabled{% endif %}>
+      <option value="">Choose ZIP / postal code</option>
+    </select>
+    <input class="form-control mt-2" id="{{ address_prefix }}PostalOther"
+           name="delivery_postal_code_other" data-ph-postal-other type="text"
+           inputmode="numeric" pattern="[0-9]{4}" maxlength="4"
+           value="{{ address_values.get('delivery_postal_code_other') or '' }}"
+           placeholder="Enter 4-digit postal code" hidden {% if address_disabled %}disabled{% endif %}>
+    <div class="form-text">ZIP codes are listed when available; some municipalities do not have a code in the dataset.</div>
+  </div>
+  <div class="col-12">
+    <p class="small text-secondary mb-0" data-ph-address-status role="status" aria-live="polite"></p>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/ph-address-selector.js', v='20261110-laguna-only') }}" defer></script>

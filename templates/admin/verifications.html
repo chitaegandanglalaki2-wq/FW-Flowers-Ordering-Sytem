@@ -1,0 +1,73 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}ID Checks{% endblock %}
+{% block admin_content %}
+<div class="admin-page-heading">
+  <div>
+    <p class="eyebrow mb-1">CUSTOMER ACCOUNTS</p>
+    <h1 class="h2 fw-bold mb-1">Review ID photos</h1>
+    <p class="text-secondary mb-0">Check that the ID is readable and the selfie matches before approving.</p>
+  </div>
+  <span class="order-stage-count">{{ verifications|length }} to review</span>
+</div>
+
+{% if verifications %}
+<div class="admin-verification-list">
+  {% for customer in verifications %}
+  <article class="verification-review-card panel p-3 p-md-4" aria-labelledby="verificationCustomer{{ customer.id }}">
+    <header class="verification-review-heading">
+      <div>
+        <span class="badge rounded-pill text-bg-warning mb-2">Pending</span>
+        <h2 class="h5 fw-bold mb-1" id="verificationCustomer{{ customer.id }}">{{ customer.full_name }}</h2>
+        <p class="small text-secondary mb-0">{{ customer.email }} <span class="mx-1">·</span> Joined {{ customer.created_at }}</p>
+      </div>
+      <p class="small text-secondary mb-0">ID check only. Approving also activates the account if the email is verified.</p>
+    </header>
+
+    <div class="verification-photo-grid">
+      {% for kind,label in [('front','ID front'),('back','ID back'),('selfie','Selfie with ID')] %}
+        {% set filename = customer.verification_id_front_filename if kind == 'front' else customer.verification_id_back_filename if kind == 'back' else customer.verification_selfie_filename %}
+        <div class="verification-photo-card">
+          <strong>{{ label }}</strong>
+          {% if filename %}
+          <a href="{{ url_for('admin_verification_image', customer_id=customer.id, image_kind=kind) }}" target="_blank" rel="noopener">
+            <img src="{{ url_for('admin_verification_image', customer_id=customer.id, image_kind=kind) }}"
+                 alt="{{ label }} of {{ customer.full_name }}" loading="lazy">
+          </a>
+          <a class="small" href="{{ url_for('admin_verification_image', customer_id=customer.id, image_kind=kind) }}" target="_blank" rel="noopener">Open full size</a>
+          {% else %}
+          <div class="verification-photo-missing">Photo missing</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="verification-review-actions">
+      <form method="post" action="{{ url_for('admin_verification_decision', customer_id=customer.id, decision='approve') }}"
+            data-confirm-message="Approve the ID photos for {{ customer.full_name }}?">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn btn-pink" type="submit">Approve ID</button>
+      </form>
+      <form class="verification-reject-form" method="post"
+            action="{{ url_for('admin_verification_decision', customer_id=customer.id, decision='reject') }}"
+            data-confirm-message="Reject {{ customer.full_name }}'s ID photos? The customer will be emailed this reason.">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <label class="visually-hidden" for="rejectionReason{{ customer.id }}">Reason for rejecting {{ customer.full_name }}'s ID</label>
+        <input class="form-control" id="rejectionReason{{ customer.id }}" name="rejection_reason"
+               maxlength="1000" placeholder="Reason required to reject" required>
+        <button class="btn btn-outline-danger" type="submit">Reject ID</button>
+      </form>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+<p class="small text-secondary mt-3 mb-0">ID photos are private and removed after you approve or reject the request.</p>
+{% else %}
+<section class="panel p-3 p-md-4">
+  <div class="orders-empty-state">
+    <span aria-hidden="true">✓</span>
+    <h2 class="h5 fw-bold">All caught up</h2>
+    <p class="text-secondary mb-0">New customer ID checks will appear here.</p>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Delivery Schedule{% endblock %}
+{% block admin_content %}
+<div class="admin-page-heading"><div><p class="eyebrow mb-1">DELIVERY AND PICKUP</p><h1 class="h2 fw-bold mb-0">Available times</h1><p class="text-secondary mt-2 mb-0">Choose when customers can book delivery or pickup.</p></div></div>
+<p class="text-secondary">Set a time and the number of orders you can accept. Cancelled orders free up a place.</p>
+<form class="panel p-3 p-md-4 mb-4" method="post">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><h2 class="h5 fw-bold">Add a time slot</h2>
+  <div class="row g-3 align-items-end">
+    <div class="col-md-4">
+      <label class="form-label" for="newSlotTime">Date &amp; time</label>
+      <input class="form-control" id="newSlotTime" name="starts_at" type="datetime-local" required>
+      <small class="text-secondary d-block mt-1" id="newSlotDayBadge">Weekdays or Weekends</small>
+    </div>
+    <div class="col-md-3"><label class="form-label" for="newSlotMethod">For</label><select class="form-select" id="newSlotMethod" name="fulfillment_method"><option>Delivery</option><option>Pickup</option></select></div>
+    <div class="col-md-2"><label class="form-label" for="newSlotCapacity">Orders allowed</label><input class="form-control" id="newSlotCapacity" name="capacity" type="number" min="1" max="1000" value="5" required></div>
+    <div class="col-md-3"><button class="btn btn-pink">Add slot</button></div>
+  </div>
+</form>
+<div class="panel p-3 p-md-4">
+  <h2 class="h5 fw-bold mb-3">Current times</h2>
+  {% for slot in slots %}
+  <form class="border rounded-3 p-3 mb-3" method="post" action="{{ url_for('admin_delivery_slot_edit', slot_id=slot.id) }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-4"><label class="form-label small" for="slotTime{{ slot.id }}">Date &amp; time</label><input class="form-control form-control-sm" id="slotTime{{ slot.id }}" name="starts_at" type="datetime-local" value="{{ slot.starts_at.strftime('%Y-%m-%dT%H:%M') }}" required></div>
+      <div class="col-md-3"><label class="form-label small" for="slotMethod{{ slot.id }}">For</label><select class="form-select form-select-sm" id="slotMethod{{ slot.id }}" name="fulfillment_method">{% for method in ['Delivery','Pickup'] %}<option {% if slot.fulfillment_method == method %}selected{% endif %}>{{ method }}</option>{% endfor %}</select></div>
+      <div class="col-md-2"><label class="form-label small" for="slotCapacity{{ slot.id }}">Orders allowed</label><input class="form-control form-control-sm" id="slotCapacity{{ slot.id }}" name="capacity" type="number" min="1" max="1000" value="{{ slot.capacity }}" required></div>
+      <div class="col-md-2 form-check form-switch ms-2"><input class="form-check-input" type="checkbox" id="slotActive{{ slot.id }}" name="is_active" value="1" {% if slot.is_active %}checked{% endif %}><label class="form-check-label small" for="slotActive{{ slot.id }}">Open for booking</label></div>
+      <div class="col-md-1"><button class="btn btn-sm btn-outline-pink">Update</button></div>
+    </div>
+    <p class="small text-secondary mb-0 mt-2">
+      <span class="badge {% if slot.starts_at.weekday() >= 5 %}bg-info-subtle text-info{% else %}bg-primary-subtle text-primary{% endif %} me-1">{{ 'Weekend' if slot.starts_at.weekday() >= 5 else 'Weekday' }}</span>
+      {{ slot.starts_at.strftime('%a, %b %d, %Y at %I:%M %p') }} ·
+      {{ slot.reserved }} of {{ slot.capacity }} orders reserved{% if not slot.is_active %} · closed{% endif %}
+    </p>
+  </form>
+  {% else %}<p class="text-secondary mb-0">No scheduled slots yet. Orders can still be placed without a preferred time.</p>{% endfor %}
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const input = document.getElementById("newSlotTime");
+  const badge = document.getElementById("newSlotDayBadge");
+  if (input && badge) {
+    const update = () => {
+      if (!input.value) {
+        badge.textContent = "Weekdays or Weekends";
+        badge.className = "text-secondary d-block mt-1";
+        return;
+      }
+      const d = new Date(input.value);
+      const isWeekend = (d.getDay() === 0 || d.getDay() === 6);
+      badge.textContent = isWeekend ? "✨ Weekend slot (" + d.toLocaleDateString("en-US", { weekday: "long" }) + ")" : "📅 Weekday slot (" + d.toLocaleDateString("en-US", { weekday: "long" }) + ")";
+      badge.className = isWeekend ? "text-info fw-semibold d-block mt-1" : "text-primary fw-semibold d-block mt-1";
+    };
+    input.addEventListener("input", update);
+    input.addEventListener("change", update);
+  }
+});
+</script>
+{% endblock %}

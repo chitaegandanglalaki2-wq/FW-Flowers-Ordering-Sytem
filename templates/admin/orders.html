@@ -1,0 +1,82 @@
+{% extends 'admin/base_admin.html' %}
+{% from '_payment_status.html' import payment_status_badge %}
+{% block title %}Manage Orders{% endblock %}
+{% block admin_content %}
+<div class="admin-page-heading">
+  <div>
+    <p class="eyebrow mb-1">CUSTOMER ORDERS</p>
+    <h1 class="h2 fw-bold mb-0">Manage Orders</h1>
+    <p class="text-secondary mt-2 mb-0">Choose a status to find orders that need attention.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-pink" href="{{ url_for('admin_orders_export') }}">Download order list</a>
+    <a class="btn btn-pink" href="{{ url_for('admin_order_add') }}">Add order</a>
+  </div>
+</div>
+<nav class="order-stage-tabs mb-4" aria-label="Filter orders by status">
+  {% for key, label in order_stages %}
+  <a class="order-stage-tab{% if active_stage == key %} active{% endif %}"
+     href="{{ url_for('admin_orders', stage=key) }}"
+     {% if active_stage == key %}aria-current="page"{% endif %}>
+    <span>{{ label }}</span><span class="order-stage-count">{{ stage_counts[key] }}</span>
+  </a>
+  {% endfor %}
+</nav>
+<section class="panel p-3 p-md-4 orders-list-panel" aria-label="{{ order_stage_labels[active_stage] }} orders">
+  {% if orders %}
+  <div class="admin-table-toolbar">
+    <label class="admin-search-field">
+      <span aria-hidden="true">⌕</span>
+      <span class="visually-hidden">Search orders</span>
+      <input class="form-control" type="search" placeholder="Search by order, customer, or status"
+             data-admin-search="#adminOrdersTable" data-admin-search-empty="#adminOrdersSearchEmpty">
+    </label>
+    <span class="small text-secondary">{{ stage_counts[active_stage] }} orders</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table align-middle orders-table" id="adminOrdersTable">
+      <thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Payment</th><th>Status</th><th>Details</th></tr></thead>
+      <tbody>
+        {% for o in orders %}
+        <tr>
+          <td>
+            <strong>#{{ 'C' if o.order_type == 'Custom bouquet' else '' }}{{ o.id }}</strong>
+            <div class="small text-secondary">{{ o.order_type }} · {{ o.created_at }}</div>
+          </td>
+          <td>{{ o.full_name }}<div class="small text-secondary">{{ o.customer_email }}</div></td>
+          <td class="fw-semibold">₱{{ '%.2f'|format(o.total) }}</td>
+          <td>
+            {{ o.payment_method }}
+            <div class="mt-1">{{ payment_status_badge(o.payment_status, o.payment_method) }}</div>
+            {% if o.payment_method == 'GCash' and o.payment_status == 'Pending' %}
+            <span class="badge text-bg-warning">{% if o.payment_proof_filename %}GCash proof to verify{% else %}Awaiting GCash proof{% endif %}</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="order-stage-badge order-stage-{{ o._stage }}">{{ order_stage_labels[o._stage] }}</span>
+            <div class="small text-secondary mt-1">{{ 'Ready for Pickup' if o.fulfillment_method == 'Pickup' and o.order_status == 'Ready for Delivery' else o.order_status }}</div>
+            {% if o.cancellation_reason %}<div class="small text-danger mt-1">Reason: {{ o.cancellation_reason }}</div>{% endif %}
+            {% if o.fulfillment_method %}<div class="small text-secondary">{{ 'Pickup' if o.fulfillment_method == 'Pickup' else 'Delivery' }}</div>{% endif %}
+          </td>
+          <td>
+            {% if o.order_type == 'Custom bouquet' %}
+            <a class="btn btn-sm btn-outline-pink" href="{{ url_for('admin_custom_detail',custom_id=o.id) }}">View Details</a>
+            {% else %}
+            <a class="btn btn-sm btn-outline-pink" href="{{ url_for('admin_order_detail',order_id=o.id) }}">View Details</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="small text-secondary text-center mt-3 mb-0" id="adminOrdersSearchEmpty" hidden>No orders match your search.</p>
+  {% else %}
+  <div class="orders-empty-state">
+    <span aria-hidden="true">✿</span>
+    <h2 class="h5 fw-bold">{{ 'No orders in this status' if active_stage != 'all' else 'No orders yet' }}</h2>
+    <p class="text-secondary mb-0">{{ 'Orders will appear here when they enter this stage.' if active_stage != 'all' else 'Customer purchases and custom bouquet requests will appear here.' }}</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

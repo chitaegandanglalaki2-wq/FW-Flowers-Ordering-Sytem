@@ -1,0 +1,131 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Customers{% endblock %}
+{% block admin_content %}
+<div class="admin-page-heading">
+  <div>
+    <p class="eyebrow mb-1">CUSTOMER LIST</p>
+    <h1 class="h2 fw-bold mb-0">Customers</h1>
+    <p class="text-secondary mt-2 mb-0">Open a customer to see contact details, account status, and orders.</p>
+  </div>
+</div>
+<div class="panel p-3 p-md-4">
+  <div class="admin-table-toolbar">
+    <label class="admin-search-field">
+      <span aria-hidden="true">⌕</span>
+      <span class="visually-hidden">Search customers</span>
+      <input class="form-control" type="search" placeholder="Search name, email, or phone"
+             data-admin-search="#adminCustomersTable" data-admin-search-empty="#adminCustomersSearchEmpty">
+    </label>
+    <span class="small text-secondary">{{ customers|length }} customers</span>
+  </div>
+  <div class="table-responsive">
+  <table class="table align-middle" id="adminCustomersTable">
+    <thead><tr><th>Photo</th><th>Customer</th><th>Email</th><th>Phone</th><th>Account</th><th>Orders</th><th>Joined</th><th>Action</th></tr></thead>
+    <tbody>
+      {% for c in customers %}
+      <tr>
+        <td>
+          {% if c.profile_image %}
+          <img class="admin-customer-avatar" src="{{ url_for('static', filename='uploads/'+c.profile_image) }}" alt="{{ c.full_name }} profile photo">
+          {% else %}
+          <span class="admin-customer-avatar admin-customer-avatar-placeholder" aria-label="No profile photo">{{ c.full_name[:1]|upper }}</span>
+          {% endif %}
+        </td>
+        <td>
+          <strong>{{ c.full_name }}</strong>
+          <button class="admin-customer-open" type="button" data-bs-toggle="modal"
+                  data-bs-target="#customerPortal{{ c.id }}">View Details</button>
+        </td>
+        <td>{{ c.email }}</td><td>{{ c.phone or '—' }}</td>
+        <td>
+          <span class="badge rounded-pill {{ 'text-bg-success' if c.account_status == 'Active' else 'text-bg-danger' if c.account_status in ['Rejected', 'Deactivated'] else 'text-bg-warning' }}">{{ c.account_status }}</span>
+          <div class="small mt-1"><span class="text-secondary">ID check:</span>
+            <span class="badge rounded-pill {{ 'text-bg-success' if c.verification_status == 'Approved' else 'text-bg-danger' if c.verification_status == 'Rejected' else 'text-bg-warning' }}">{{ c.verification_status }}</span>
+          </div>
+        </td>
+        <td>{{ c.order_count }}</td><td>{{ c.created_at }}</td>
+        <td>
+          <form method="post" action="{{ url_for('admin_customer_status', customer_id=c.id) }}"
+                {% if c.account_status != 'Deactivated' %}data-confirm-message="Deactivate {{ c.full_name }}? They will not be able to sign in until reactivated."{% endif %}>
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            {% if c.account_status == 'Deactivated' %}
+            <input type="hidden" name="action" value="reactivate">
+            <button class="btn btn-sm btn-outline-pink" type="submit" title="Allow this customer to sign in again">Reactivate</button>
+            {% else %}
+            <input type="hidden" name="action" value="deactivate">
+            <button class="btn btn-sm btn-outline-secondary" type="submit" title="Block this customer from signing in">Deactivate</button>
+            {% endif %}
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr data-empty-row><td colspan="8">No customers.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="small text-secondary text-center mt-3 mb-0" id="adminCustomersSearchEmpty" hidden>No customers match your search.</p>
+</div>
+{% for c in customers %}
+<div class="modal fade admin-customer-portal-modal" id="customerPortal{{ c.id }}"
+     tabindex="-1" aria-labelledby="customerPortalTitle{{ c.id }}" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="d-flex align-items-center gap-3 min-w-0">
+          {% if c.profile_image %}
+          <img class="admin-customer-avatar" src="{{ url_for('static', filename='uploads/'+c.profile_image) }}" alt="">
+          {% else %}
+          <span class="admin-customer-avatar admin-customer-avatar-placeholder" aria-hidden="true">{{ c.full_name[:1]|upper }}</span>
+          {% endif %}
+          <div><p class="eyebrow mb-1">CUSTOMER PROFILE</p><h2 class="modal-title h5 fw-bold mb-0" id="customerPortalTitle{{ c.id }}">{{ c.full_name }}</h2></div>
+        </div>
+        <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close customer profile"></button>
+      </div>
+      <div class="modal-body">
+        <section class="admin-customer-status-summary mb-3">
+          <div><span>Account</span><strong><span class="badge rounded-pill {{ 'text-bg-success' if c.account_status == 'Active' else 'text-bg-danger' if c.account_status in ['Rejected', 'Deactivated'] else 'text-bg-warning' }}">{{ c.account_status }}</span></strong></div>
+          <div><span>ID check</span><strong><span class="badge rounded-pill {{ 'text-bg-success' if c.verification_status == 'Approved' else 'text-bg-danger' if c.verification_status == 'Rejected' else 'text-bg-warning' }}">{{ c.verification_status }}</span></strong></div>
+          <div><span>Orders</span><strong>{{ c.order_count }}</strong></div>
+          <div><span>Customer since</span><strong>{{ c.created_at }}</strong></div>
+        </section>
+        <div class="admin-customer-contact-grid">
+          <div><span>Email address</span><strong>{{ c.email }}</strong></div>
+          <div><span>Contact number</span><strong>{{ c.phone or 'Not provided' }}</strong></div>
+          <div class="admin-customer-address"><span>Saved address</span><strong>{{ c.delivery_address or 'No saved address' }}</strong></div>
+        </div>
+        <form class="mt-3" method="post" action="{{ url_for('admin_customer_tags', customer_id=c.id) }}">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <label class="form-label small fw-semibold" for="customerTags{{ c.id }}">Staff notes (private)</label>
+          <input class="form-control form-control-sm" id="customerTags{{ c.id }}" name="admin_tags" maxlength="500" value="{{ c.admin_tags or '' }}" placeholder="Repeat customer, VIP">
+          <button class="btn btn-sm btn-outline-pink mt-2">Save tags</button>
+          <p class="form-text">Only staff can see these labels. Separate labels with commas.</p>
+        </form>
+        <div class="d-flex justify-content-between align-items-center gap-2 mt-4 mb-2">
+          <h3 class="h6 fw-bold mb-0">Order history</h3><span class="badge text-bg-light">{{ c.order_history|length }} orders</span>
+        </div>
+        {% if c.order_history %}
+        <div class="table-responsive">
+          <table class="table table-sm align-middle admin-customer-history">
+            <thead><tr><th>Order</th><th>Date</th><th>Total</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              {% for o in c.order_history %}
+              <tr>
+                <td>{{ 'Custom bouquet' if o.order_type == 'Custom bouquet' else 'Order' }} #{{ 'C' if o.order_type == 'Custom bouquet' else '' }}{{ o.order_id }}</td>
+                <td>{{ o.created_at }}</td><td>₱{{ '%.2f'|format(o.total) }}</td><td>{{ o.order_status }}</td>
+                <td><a class="btn btn-sm btn-outline-pink" href="{{ url_for('admin_custom_detail',custom_id=o.order_id) if o.order_type == 'Custom bouquet' else url_for('admin_order_detail',order_id=o.order_id) }}">View Details</a></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="orders-empty-state compact"><span aria-hidden="true">✿</span><p class="mb-0">This customer has no orders yet.</p></div>
+        {% endif %}
+      </div>
+      <div class="modal-footer"><button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Close</button></div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

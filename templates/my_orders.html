@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% from '_payment_status.html' import payment_status_badge %}
+{% block title %}My Orders{% endblock %}
+{% block content %}
+<div class="orders-page-heading mb-4">
+  <p class="eyebrow mb-1">YOUR BOUQUETS &amp; REQUESTS</p>
+  <h1 class="h2 fw-bold mb-1">My Orders</h1>
+  <p class="text-secondary mb-0">Follow every order from payment to delivery.</p>
+</div>
+<nav class="order-stage-tabs mb-4" aria-label="Filter orders by status">
+  {% for key, label in order_stages %}
+  <a class="order-stage-tab{% if active_stage == key %} active{% endif %}"
+     href="{{ url_for('my_orders', stage=key) }}"
+     {% if active_stage == key %}aria-current="page"{% endif %}>
+    <span>{{ label }}</span><span class="order-stage-count">{{ stage_counts[key] }}</span>
+  </a>
+  {% endfor %}
+</nav>
+<section class="panel p-3 p-md-4 orders-list-panel" aria-label="{{ order_stage_labels[active_stage] }} orders">
+  {% if orders %}
+  <div class="table-responsive">
+    <table class="table align-middle orders-table">
+      <thead>
+        <tr><th>Order</th><th>Items</th><th>Date</th><th>Total</th><th>Payment</th><th>Status</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for o in orders %}
+        <tr class="notification-target-row" id="{{ 'custom-order-' if o.order_type == 'Custom bouquet' else 'order-' }}{{ o.id }}">
+          <td>
+            <strong>#{{ 'C' if o.order_type == 'Custom bouquet' else '' }}{{ o.id }}</strong>
+            <div class="small text-secondary">{{ o.order_type }}</div>
+          </td>
+          <td>
+            {% if o.order_type == 'Custom bouquet' %}
+              {% if o.reference_image %}<img class="tiny-image order-item-image" src="{{ url_for('static',filename='uploads/'+o.reference_image) }}" alt="Your reference bouquet">
+              {% elif o.drawing_image %}<img class="tiny-image order-item-image" src="{{ url_for('static',filename='uploads/'+o.drawing_image) }}" alt="Your bouquet drawing">{% endif %}
+              <div>{{ o.flower_type }}, {{ o.flower_color }}, {{ o.bouquet_size }}, {{ o.wrapping_style }} × {{ o.quantity }}</div>
+            {% else %}
+              <span>Bouquet order</span>
+              <div class="small text-secondary">{{ 'Pickup' if o.fulfillment_method == 'Pickup' else 'Delivery' }}</div>
+            {% endif %}
+          </td>
+          <td>{{ o.created_at }}</td>
+          <td class="fw-semibold">₱{{ '%.2f'|format(o.total) }}</td>
+          <td>
+            {{ o.payment_method }}
+            <div>{{ payment_status_badge(o.payment_status, o.payment_method) }}</div>
+          </td>
+          <td>
+            <span class="order-stage-badge order-stage-{{ o._stage }}">{{ order_stage_labels[o._stage] }}</span>
+            <div class="small text-secondary mt-1">{{ o.order_status }}</div>
+            {% if o.cancellation_reason %}<div class="small text-danger mt-1">Reason: {{ o.cancellation_reason }}</div>{% endif %}
+            <details class="order-progress-disclosure">
+              <summary>View progress</summary>
+              {% set order = o %}
+              {% set order_status = o.order_status %}
+              {% set fulfillment_method = o.fulfillment_method %}
+              {% include '_order_timeline.html' %}
+            </details>
+          </td>
+          <td>
+            <div class="order-actions">
+              {% if o.order_type == 'Custom bouquet' %}
+                <a class="btn btn-sm btn-outline-pink" href="{{ url_for('customer_custom_detail', custom_id=o.id) }}">Details</a>
+                {% if o.payment_method == 'GCash' %}
+                <details class="custom-gcash-payment">
+                  <summary>GCash payment details</summary>
+                  <p class="small mb-1"><strong>GCash name:</strong> {{ gcash.name }}</p>
+                  <p class="small mb-1"><strong>GCash number:</strong> {{ gcash.number }}</p>
+                  {% include '_gcash_qr.html' %}
+                  <p class="small"><strong>Amount to pay:</strong> ₱{{ '%.2f'|format(o.total) }}</p>
+                  {% if o.payment_proof_filename %}
+                  <a href="{{ url_for('payment_proof_file', order_type='Custom', order_id=o.id) }}" target="_blank" rel="noopener"><img class="payment-proof-thumbnail" src="{{ url_for('payment_proof_file', order_type='Custom', order_id=o.id) }}" alt="Your GCash proof for custom request {{ o.id }}"></a>
+                  <p class="small text-secondary">Receipt uploaded {{ o.payment_proof_uploaded_at }}.</p>
+                  {% endif %}
+                  {% if o.order_status == 'Pending' and o.payment_status != 'Paid' and (not o.payment_proof_filename or o.payment_status == 'Failed') %}
+                  <form method="post" enctype="multipart/form-data" action="{{ url_for('upload_custom_payment_proof_route', custom_id=o.id) }}">
+                    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                    <label class="form-label small" for="customProof{{ o.id }}">Upload payment receipt (PNG/JPG/WEBP, max 5 MB)</label>
+                    <input class="form-control form-control-sm mb-2" id="customProof{{ o.id }}" type="file" name="payment_proof" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" required>
+                    <button class="btn btn-sm btn-pink" type="submit">{{ 'Upload new receipt' if o.payment_status == 'Failed' else 'Upload payment receipt' }}</button>
+                  </form>
+                  {% elif o.payment_status == 'Pending' and o.payment_proof_filename %}
+                  <p class="small text-secondary">Payment pending verification.</p>
+                  {% elif o.payment_status == 'Paid' %}
+                  <p class="small text-success">Payment verified.</p>
+                  {% elif o.payment_status == 'Failed' %}
+                  <p class="small text-danger">Payment rejected. Review the shop's reason and open details to upload a new receipt.</p>
+                  {% endif %}
+                  {% if o.payment_review_note %}<p class="small text-danger mt-2">{{ o.payment_review_note }}</p>{% endif %}
+                </details>
+                {% endif %}
+                {% if o.order_status in ['Delivered', 'Picked Up'] and not o.customer_received_at %}
+                <form method="post" action="{{ url_for('customer_confirm_custom_delivery',custom_id=o.id) }}">
+                  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                  <button class="btn btn-sm btn-pink" type="submit">Confirm received</button>
+                </form>
+                {% elif o.customer_received_at %}
+                <span class="badge text-bg-success">Received</span>
+                {% endif %}
+              {% else %}
+                <a class="btn btn-sm btn-outline-pink" href="{{ url_for('order_detail',order_id=o.id) }}">Details</a>
+                <form method="post" action="{{ url_for('reorder',order_id=o.id) }}">
+                  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                  <button class="btn btn-sm btn-outline-secondary" type="submit">Order again</button>
+                </form>
+                {% if o.order_status in ['Delivered', 'Picked Up'] and not o.customer_received_at %}
+                <form method="post" action="{{ url_for('customer_confirm_delivery',order_id=o.id) }}">
+                  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                  <button class="btn btn-sm btn-pink" type="submit">Confirm received</button>
+                </form>
+                {% elif o.customer_received_at %}
+                <span class="badge text-bg-success">Received</span>
+                {% endif %}
+                {% if o.order_status in ['Delivered', 'Picked Up'] %}
+                <a class="btn btn-sm btn-outline-pink" href="{{ url_for('feedback', order_id=o.id) }}">Review Bouquet</a>
+                {% endif %}
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="orders-empty-state">
+    <span aria-hidden="true">✿</span>
+    <h2 class="h5 fw-bold">{{ 'No orders in this status yet' if active_stage != 'all' else 'No orders yet' }}</h2>
+    <p class="text-secondary mb-0">{{ 'When an order matches this status, it will appear here.' if active_stage != 'all' else 'Your bouquet purchases and custom requests will appear here.' }}</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

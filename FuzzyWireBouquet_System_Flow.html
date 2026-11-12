@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FuzzyWireBouquet — System Flow and Improvements</title>
+  <style>
+    :root {
+      --ink: #1c1917;
+      --muted: #57534e;
+      --line: #d6d3d1;
+      --paper: #fff;
+      --soft: #f5f5f4;
+      --accent: #9f1239;
+      --ok: #166534;
+      --warn: #9a3412;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font: 16px/1.5 "Segoe UI", Calibri, Arial, sans-serif;
+    }
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 28px 64px;
+    }
+    h1 { font-size: 28px; margin: 0 0 8px; }
+    h2 {
+      font-size: 20px;
+      margin: 36px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--accent);
+    }
+    h3 { font-size: 16px; margin: 20px 0 8px; }
+    p, li { color: var(--ink); }
+    .sub { color: var(--muted); margin: 0 0 24px; }
+    .note {
+      background: var(--soft);
+      border-left: 4px solid var(--accent);
+      padding: 12px 16px;
+      margin: 16px 0 28px;
+    }
+    .download-bar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 16px 0 28px;
+    }
+    button, .btn {
+      appearance: none;
+      border: 1px solid var(--ink);
+      background: var(--ink);
+      color: #fff;
+      padding: 10px 16px;
+      font: inherit;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+    button.secondary, .btn.secondary {
+      background: #fff;
+      color: var(--ink);
+    }
+    .flow {
+      border: 1px solid var(--line);
+      padding: 16px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+    }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      margin: 10px 0;
+    }
+    .box {
+      border: 1px solid var(--ink);
+      background: #fff;
+      padding: 8px 12px;
+      min-width: 120px;
+      text-align: center;
+      font-size: 13px;
+    }
+    .box.accent { background: #fff1f2; border-color: var(--accent); }
+    .box.ok { background: #f0fdf4; border-color: var(--ok); }
+    .box.warn { background: #fff7ed; border-color: var(--warn); }
+    .arrow { color: var(--muted); font-size: 18px; }
+    .lane-title {
+      text-align: center;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      margin: 8px 0 24px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th { background: var(--soft); }
+    ol.steps { padding-left: 22px; }
+    footer {
+      margin-top: 40px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    @media print {
+      .download-bar { display: none; }
+      .page { padding: 0; max-width: none; }
+      a { color: inherit; text-decoration: none; }
+      .flow { break-inside: avoid; }
+      table, h2 { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>FuzzyWireBouquet — System Flow</h1>
+    <p class="sub">Customer shop, admin portal, order paths, and recommended next work. Open this file, then Save as PDF.</p>
+
+    <div class="download-bar">
+      <button type="button" id="savePdf">Save / Print as PDF</button>
+      <button type="button" class="secondary" id="printOnly">Print</button>
+    </div>
+
+    <div class="note">
+      <strong>How to download:</strong> Click <em>Save / Print as PDF</em>, set Destination to <strong>Microsoft Print to PDF</strong> or <strong>Save as PDF</strong>, then save. Keep this HTML file too if you need an editable copy.
+    </div>
+
+    <h2>1. What the system already does</h2>
+    <p>Two portals: customer shop and a separate admin login. Catalog orders go through cart, checkout, payment, status timeline, and a simulated delivery map. Custom bouquets are submitted as requests (materials + photo or drawing) and join the same FIFO work queue, but they do not use checkout, GCash, address, time slot, or live tracking.</p>
+
+    <h2>2. Account flow</h2>
+    <div class="flow" aria-label="Account registration flow">
+      <div class="lane-title">Account</div>
+      <div class="row">
+        <div class="box">Register<br><small>unique customer ID + terms</small></div>
+        <div class="arrow">→</div>
+        <div class="box warn">Pending verification</div>
+        <div class="arrow">→</div>
+        <div class="box accent">Admin FIFO<br>approve / reject</div>
+      </div>
+      <div class="row">
+        <div class="box ok">Approved → Customer login</div>
+        <div class="arrow">→</div>
+        <div class="box">Home / Shop / Profile</div>
+      </div>
+      <p style="text-align:center;color:var(--muted);font-size:13px;margin:8px 0 0;">Rejected accounts cannot sign in. Admins use /admin/login. Password reset is email link, 30 minutes, one use.</p>
+    </div>
+
+    <h2>3. Catalog order flow</h2>
+    <div class="flow" aria-label="Catalog purchase flow">
+      <div class="lane-title">Customer</div>
+      <div class="row">
+        <div class="box">Shop / filters</div>
+        <div class="arrow">→</div>
+        <div class="box">Details, wishlist</div>
+        <div class="arrow">→</div>
+        <div class="box">Cart or Buy now</div>
+        <div class="arrow">→</div>
+        <div class="box accent">Checkout</div>
+      </div>
+      <div class="row">
+        <div class="box">Delivery address<br>or free pickup</div>
+        <div class="arrow">→</div>
+        <div class="box">Optional slot + voucher</div>
+        <div class="arrow">→</div>
+        <div class="box">Gift message</div>
+        <div class="arrow">→</div>
+        <div class="box warn">COD or GCash</div>
+      </div>
+      <div class="lane-title" style="margin-top:16px;">Admin fulfillment (FIFO)</div>
+      <div class="row">
+        <div class="box">Pending</div>
+        <div class="arrow">→</div>
+        <div class="box ok">Confirmed<br><small>chat summary sent</small></div>
+        <div class="arrow">→</div>
+        <div class="box">Preparing</div>
+        <div class="arrow">→</div>
+        <div class="box">Ready for Delivery</div>
+      </div>
+      <div class="row">
+        <div class="box accent">Out for Delivery<br><small>or pickup at shop</small></div>
+        <div class="arrow">→</div>
+        <div class="box">Delivered</div>
+        <div class="arrow">→</div>
+        <div class="box ok">Customer confirms receipt</div>
+        <div class="arrow">→</div>
+        <div class="box">Review</div>
+      </div>
+      <p style="text-align:center;color:var(--muted);font-size:13px;margin:8px 0 0;">Cancel requires a reason shown to the customer. Map rider is simulated (no GPS). GCash return does not by itself mark the order Paid.</p>
+    </div>
+
+    <h2>4. Custom bouquet flow (current)</h2>
+    <div class="flow" aria-label="Current custom bouquet flow">
+      <div class="row">
+        <div class="box">Custom form<br>materials, size, extras</div>
+        <div class="arrow">→</div>
+        <div class="box">Photo upload or drawing</div>
+        <div class="arrow">→</div>
+        <div class="box warn">Request saved<br>no checkout</div>
+        <div class="arrow">→</div>
+        <div class="box accent">Same FIFO queue</div>
+      </div>
+      <p style="text-align:center;color:var(--muted);font-size:13px;margin:8px 0 0;">No delivery address, time slot, voucher, GCash, or map tracking. Material stock is not reserved or deducted.</p>
+    </div>
+
+    <h2>5. Target custom flow (recommended)</h2>
+    <div class="flow" aria-label="Recommended custom bouquet flow">
+      <div class="row">
+        <div class="box">Customer submits design</div>
+        <div class="arrow">→</div>
+        <div class="box accent">Admin quote / revise</div>
+        <div class="arrow">→</div>
+        <div class="box">Customer accepts</div>
+        <div class="arrow">→</div>
+        <div class="box ok">Same checkout as catalog</div>
+      </div>
+      <div class="row">
+        <div class="box">Reserve materials</div>
+        <div class="arrow">→</div>
+        <div class="box">Confirm → prepare → deliver</div>
+        <div class="arrow">→</div>
+        <div class="box">Receipt + review</div>
+      </div>
+    </div>
+
+    <h2>6. Features to add</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Feature</th>
+          <th>Area</th>
+          <th>Why</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>Manual GCash QR proof review</td>
+          <td>Payment</td>
+          <td>Customer uploads an image after paying in GCash; an admin must review it before the payment is marked Paid.</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>Custom-order checkout</td>
+          <td>Fulfillment</td>
+          <td>After quote accept, reuse address, slot, voucher, COD/GCash, and map tracking.</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>Quote accept / revise</td>
+          <td>Custom</td>
+          <td>Admin can change price or materials; customer accepts before production.</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>Map-based delivery fee</td>
+          <td>Delivery</td>
+          <td>Compute km from shop and delivery geocodes. Do not trust typed distance.</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td>Reserve custom materials</td>
+          <td>Inventory</td>
+          <td>Hold or deduct stock on Confirm; restore on Cancel.</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td>Customer cancel / reschedule</td>
+          <td>Orders</td>
+          <td>Allow cancel or slot change while status is still Pending.</td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td>Order emails</td>
+          <td>Comms</td>
+          <td>Reuse existing SMTP (password reset) for confirm, out-for-delivery, and cancel.</td>
+        </tr>
+        <tr>
+          <td>8</td>
+          <td>Product cost / profit</td>
+          <td>Analytics</td>
+          <td>Store cost per bouquet and material so analytics can show profit.</td>
+        </tr>
+        <tr>
+          <td>9</td>
+          <td>Proof of delivery</td>
+          <td>Delivery</td>
+          <td>Photo when marking Delivered, plus existing customer receipt confirm.</td>
+        </tr>
+        <tr>
+          <td>10</td>
+          <td>Occasion calendar</td>
+          <td>Shop</td>
+          <td>Lead-time warnings for Valentine, Mother’s Day, graduation, and similar dates.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>7. What to improve</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Change</th>
+          <th>Area</th>
+          <th>Current gap</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Split app.py</td>
+          <td>Architecture</td>
+          <td>One large file holds routes, schema bootstrap, payments, maps, and chat.</td>
+        </tr>
+        <tr>
+          <td>Replace visit-time migrations</td>
+          <td>Data</td>
+          <td>Schema is patched when a page is opened. Use schema.sql plus a migration folder.</td>
+        </tr>
+        <tr>
+          <td>FIFO account approval</td>
+          <td>UX</td>
+          <td>Oldest pending registration must be decided first. Allow skip with a logged reason for a real shop.</td>
+        </tr>
+        <tr>
+          <td>Pickup geocode</td>
+          <td>Maps</td>
+          <td>Shop address is not Nominatim-friendly, so the map route stays empty.</td>
+        </tr>
+        <tr>
+          <td>Pickup statuses</td>
+          <td>Orders</td>
+          <td>Use Ready for Pickup / Picked Up instead of Out for Delivery.</td>
+        </tr>
+        <tr>
+          <td>Custom payment states</td>
+          <td>Payment</td>
+          <td>custom_orders.payment_status is only Unpaid or Paid. Align with Pending, Failed, Refunded.</td>
+        </tr>
+        <tr>
+          <td>Label the map honestly</td>
+          <td>Tracking</td>
+          <td>Call it Estimated route. Do not imply live GPS.</td>
+        </tr>
+        <tr>
+          <td>Automated tests</td>
+          <td>Quality</td>
+          <td>Cover checkout totals, voucher once-per-customer, slot capacity, FIFO queue, and stock decrement.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>8. Suggested build order</h2>
+    <ol class="steps">
+      <li><strong>A — Payment and distance:</strong> GCash QR plus proof upload/admin review, honest payment states, geocoded delivery fees, searchable shop address.</li>
+      <li><strong>B — Unify custom orders:</strong> quote → checkout reuse → reserve materials.</li>
+      <li><strong>C — Polish:</strong> customer cancel, order emails, proof of delivery, cost/profit, then split app.py and add tests.</li>
+    </ol>
+    <p>Out of scope unless the paper needs it: live rider GPS, guest checkout, multi-branch inventory, native app.</p>
+
+    <footer>
+      FuzzyWireBouquet Full System · generated for project documentation · 3 November 2026
+    </footer>
+  </div>
+  <script>
+    function printDoc() {
+      window.print();
+    }
+    document.getElementById("savePdf").addEventListener("click", printDoc);
+    document.getElementById("printOnly").addEventListener("click", printDoc);
+  </script>
+</body>
+</html>

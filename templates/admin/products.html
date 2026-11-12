@@ -1,0 +1,69 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Manage Products{% endblock %}
+{% block admin_content %}
+<div class="admin-page-heading">
+  <div>
+    <p class="eyebrow mb-1">PRODUCTS</p>
+    <h1 class="h2 fw-bold mb-0">Products &amp; Stock</h1>
+  </div>
+  <a class="btn btn-pink" href="{{ url_for('admin_product_add') }}">+ Add product</a>
+</div>
+<div class="panel p-3 p-md-4">
+  <div class="admin-table-toolbar">
+    <label class="admin-search-field">
+      <span aria-hidden="true">⌕</span>
+      <span class="visually-hidden">Search products</span>
+      <input class="form-control" type="search" placeholder="Search by name, flower, or color"
+             data-admin-search="#adminProductsTable" data-admin-search-empty="#adminProductsSearchEmpty">
+    </label>
+    <span class="small text-secondary">{{ products|length }} products</span>
+  </div>
+  <div class="table-responsive">
+  <table class="table align-middle" id="adminProductsTable">
+    <thead><tr><th>Bouquet</th><th>Flower / Color</th><th>Occasion</th><th>Price</th><th>Sold</th><th>Rating</th><th>Shop</th><th>Stock</th><th>Update stock</th><th>Details</th></tr></thead>
+    <tbody>
+      {% for p in products %}
+      <tr>
+        <td>
+          <div class="d-flex align-items-center gap-2">
+            {% if p.image_filename %}
+            <img class="tiny-image" src="{{ url_for('static',filename='uploads/'+p.image_filename) }}" alt="{{ p.name }}">
+            {% else %}
+            <img class="tiny-image product-table-placeholder" src="{{ url_for('static',filename='bouquet-art.svg') }}" alt="Bouquet illustration">
+            {% endif %}
+            <div>{{ p.name }}<div class="small text-secondary">{{ p.description or '' }}</div></div>
+          </div>
+        </td>
+        <td>{{ p.flower_type }} / {{ p.color }}</td>
+        <td>{{ p.occasion or 'Any occasion' }}</td>
+        <td>₱{{ '%.2f'|format(p.price) }}</td>
+        <td>{{ p.total_sold }}</td>
+        <td><span class="review-stars">★</span> {{ '%.1f'|format(p.avg_rating) }} <span class="small text-secondary">({{ p.rating_count }})</span></td>
+        <td>
+          {% if not p.is_active %}
+          <span class="badge text-bg-secondary">Hidden</span>
+          {% elif p.stock == 0 %}
+          <span class="badge text-bg-danger">Sold out</span>
+          {% else %}
+          <span class="badge text-bg-success">Available</span>
+          {% endif %}
+        </td>
+        <td><span class="badge {{ 'text-bg-danger' if p.stock<=5 else 'text-bg-success' }}">{{ p.stock }}</span></td>
+        <td>
+          <form method="post" action="{{ url_for('admin_stock',product_id=p.id) }}" class="d-flex gap-2">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <input class="form-control form-control-sm stock-input" type="number" min="0" name="stock" value="{{ p.stock }}" aria-label="Stock for {{ p.name }}">
+            <button class="btn btn-sm btn-outline-pink" title="Save the new stock amount">Update</button>
+          </form>
+        </td>
+        <td><a class="btn btn-sm btn-outline-pink" href="{{ url_for('admin_product_edit',product_id=p.id) }}">View Details</a></td>
+      </tr>
+      {% else %}
+      <tr data-empty-row><td class="text-secondary py-4" colspan="10">No products yet. Add your first bouquet to the catalog.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="small text-secondary text-center mt-3 mb-0" id="adminProductsSearchEmpty" hidden>No products match your search.</p>
+</div>
+{% endblock %}

@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% block title %}Create Account{% endblock %}
+{% block content %}
+<section class="register-page">
+  <div class="register-card panel">
+    <div class="register-heading">
+      <span class="register-mark" aria-hidden="true">✿</span>
+      <p class="eyebrow mb-1">WELCOME TO FUZZYWIRE</p>
+      <h1 class="h3 fw-bold mb-2">Create your account</h1>
+      <p class="text-secondary mb-0">Save your favorite bouquets and keep track of every order.</p>
+    </div>
+    <form method="post" enctype="multipart/form-data" data-registration-form>
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label class="form-label" for="registerName">Full name</label>
+      <input class="form-control mb-3" id="registerName" name="full_name"
+             autocomplete="name" required maxlength="120">
+
+      <label class="form-label" for="registerEmail">Email address</label>
+      <input class="form-control mb-3" id="registerEmail" type="email" name="email"
+             autocomplete="email" required maxlength="160">
+
+      <fieldset class="register-verification-documents mb-4">
+        <legend class="h6 fw-bold">Identity verification photos <span class="text-danger">*</span></legend>
+        <p class="small text-secondary">Upload a clear photo of the front and back of your valid ID, plus a selfie of you holding the same ID. These images are private and are only visible to admins reviewing your account.</p>
+        <label class="form-label" for="verificationIdFront">Valid ID — front</label>
+        <input class="form-control mb-3" id="verificationIdFront" name="verification_id_front"
+               type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+               capture="environment" aria-describedby="verificationPhotoHelp" required>
+
+        <label class="form-label" for="verificationIdBack">Valid ID — back</label>
+        <input class="form-control mb-3" id="verificationIdBack" name="verification_id_back"
+               type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+               capture="environment" required>
+
+        <label class="form-label" for="verificationSelfie">Selfie holding your valid ID</label>
+        <input class="form-control" id="verificationSelfie" name="verification_selfie"
+               type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+               capture="user" required>
+        <div class="form-text mt-2" id="verificationPhotoHelp">PNG, JPG, JPEG, or WEBP; each image must be 5 MB or smaller. Make sure your face and ID details are readable.</div>
+      </fieldset>
+
+      <section class="register-address-section mb-4" aria-labelledby="registerAddressHeading">
+        <h2 class="h6 fw-bold mb-1" id="registerAddressHeading">Default delivery address <span class="text-secondary fw-normal">(optional)</span></h2>
+        <p class="small text-secondary mb-3">Save an address to prefill checkout. You can add or change it later in your profile.</p>
+        {% with address_prefix='register', address_values=register_address_values, address_required=false, address_disabled=false, address_allowed_province_code=laguna_province_code %}
+          {% include '_philippine_address_fields.html' %}
+        {% endwith %}
+      </section>
+
+      <label class="form-label" for="registerPassword">Password</label>
+      <div class="password-input-wrap mb-2">
+        <input class="form-control" id="registerPassword" type="password" name="password"
+               autocomplete="new-password" minlength="8" required
+               data-password-input
+               aria-describedby="passwordRequirements">
+        <button class="password-visibility-toggle" type="button" data-password-toggle="registerPassword"
+                aria-controls="registerPassword" aria-label="Show password" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true" data-eye-open><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true" data-eye-closed hidden><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.7 10.7 0 0 1 12 5c6.4 0 10 7 10 7a14.8 14.8 0 0 1-3.1 3.8M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7c1 0 2-.2 2.8-.5"/></svg>
+        </button>
+      </div>
+      <div class="password-requirements-card mb-3" id="passwordRequirements" aria-live="polite">
+        <div class="password-requirements-header">
+          <span class="password-requirements-title">Password must contain:</span>
+          <span class="password-strength-badge" data-password-badge>Incomplete</span>
+        </div>
+        <ul class="password-requirements-list">
+          <li class="requirement-item" data-rule="length">
+            <span class="requirement-icon" aria-hidden="true">•</span>
+            <span class="requirement-text">At least 8 characters</span>
+          </li>
+          <li class="requirement-item" data-rule="uppercase">
+            <span class="requirement-icon" aria-hidden="true">•</span>
+            <span class="requirement-text">At least 1 uppercase letter (A-Z)</span>
+          </li>
+          <li class="requirement-item" data-rule="lowercase">
+            <span class="requirement-icon" aria-hidden="true">•</span>
+            <span class="requirement-text">At least 1 lowercase letter (a-z)</span>
+          </li>
+          <li class="requirement-item" data-rule="number">
+            <span class="requirement-icon" aria-hidden="true">•</span>
+            <span class="requirement-text">At least 1 number (0-9)</span>
+          </li>
+          <li class="requirement-item" data-rule="special">
+            <span class="requirement-icon" aria-hidden="true">•</span>
+            <span class="requirement-text">At least 1 special character (e.g. !@#$%^&*)</span>
+          </li>
+        </ul>
+        <div class="password-error-alert" data-password-error hidden>
+          Please fulfill all password requirements before submitting.
+        </div>
+      </div>
+
+      <label class="form-label" for="registerConfirmPassword">Confirm password</label>
+      <div class="password-input-wrap mb-1">
+        <input class="form-control" id="registerConfirmPassword" type="password"
+               name="confirm_password" autocomplete="new-password" required
+               data-confirm-password="registerPassword"
+               aria-describedby="confirmPasswordFeedback">
+        <button class="password-visibility-toggle" type="button" data-password-toggle="registerConfirmPassword"
+                aria-controls="registerConfirmPassword" aria-label="Show confirm password" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true" data-eye-open><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true" data-eye-closed hidden><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.7 10.7 0 0 1 12 5c6.4 0 10 7 10 7a14.8 14.8 0 0 1-3.1 3.8M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7c1 0 2-.2 2.8-.5"/></svg>
+        </button>
+      </div>
+      <div class="confirm-password-feedback mb-3" id="confirmPasswordFeedback" data-confirm-feedback hidden>
+        Passwords do not match.
+      </div>
+      <section class="register-terms-content mb-3" aria-labelledby="registerTermsHeading">
+        <h2 class="h6 fw-bold mb-2" id="registerTermsHeading">Terms and Conditions</h2>
+        <p class="small text-secondary mb-2">Please read the Terms and Conditions before creating your account.</p>
+        <a href="{{ url_for('terms') }}">Read FuzzyWire Bouquet's Terms and Conditions</a>
+      </section>
+      <div class="form-check register-terms">
+        <input class="form-check-input" id="registerTerms" name="terms_accepted"
+               type="checkbox" value="on" data-registration-terms required>
+        <label class="form-check-label" for="registerTerms">
+          I agree to the Terms and Conditions.
+        </label>
+      </div>
+      <button class="btn btn-pink w-100 mt-3" type="submit">Create account</button>
+    </form>
+    <p class="small text-center mt-4 mb-0">Already registered?
+      <a href="{{ url_for('login') }}">Log in</a>
+    </p>
+  </div>
+</section>
+{% endblock %}

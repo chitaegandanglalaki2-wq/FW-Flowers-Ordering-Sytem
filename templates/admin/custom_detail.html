@@ -1,0 +1,117 @@
+{% extends 'admin/base_admin.html' %}
+{% from '_payment_status.html' import payment_status_badge %}
+{% block title %}Custom Order Details{% endblock %}
+{% block admin_content %}
+<div class="admin-page-heading">
+  <div><p class="eyebrow mb-1">CUSTOM BOUQUET</p><h1 class="h2 fw-bold mb-1">Request #C{{ order.id }}</h1><p class="small text-secondary mb-0">For {{ order.full_name }} · {{ order.created_at }}</p></div>
+  <a class="btn btn-outline-pink" href="{{ url_for('admin_orders') }}">Back to orders</a>
+</div>
+<section class="admin-detail-summary-grid" aria-label="Custom request summary">
+  <div><span>Request status</span><strong><span class="badge rounded-pill {{ 'text-bg-success' if order.status in ['Delivered', 'Picked Up'] else 'text-bg-danger' if order.status == 'Cancelled' else 'text-bg-warning' }}">{{ order.status }}</span></strong></div>
+  <div><span>Customer</span><strong>{{ order.full_name }}</strong></div>
+  <div><span>Bouquet</span><strong>{{ order.flower_type }} · {{ order.flower_color }}</strong></div>
+  <div><span>Total</span><strong>₱{{ '%.2f'|format(order.total_price) }}</strong></div>
+</section>
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="panel p-4 h-100">
+      <h2 class="h5">Customer and request</h2>
+      <p>{{ order.full_name }} · {{ order.email }}</p>
+      {% set order_status = order.status %}
+      {% set fulfillment_method = order.fulfillment_method %}
+      {% include '_order_timeline.html' %}
+      <h2 class="h5 mt-3">Design details</h2>
+      <p>{{ order.flower_type }} · {{ order.flower_color }} · {{ order.bouquet_size }} · {{ order.wrapping_style }} · Quantity {{ order.quantity }}</p>
+      <p><strong>Notes for the florist:</strong> {{ order.custom_message or 'None' }}</p>
+      <p><strong>Total:</strong> ₱{{ '%.2f'|format(order.total_price) }}</p>
+      <p><strong>Payment:</strong> {{ order.payment_method }} — {{ payment_status_badge(order.payment_status, order.payment_method) }}</p>
+      <p><strong>{{ 'Pickup location' if order.fulfillment_method == 'Pickup' else 'Delivery address' }}:</strong> {{ order.delivery_address or 'Not provided' }}</p>
+      {% if order.delivery_fee %}<p><strong>Delivery fee:</strong> ₱{{ '%.2f'|format(order.delivery_fee) }}</p>{% endif %}
+      {% if scheduled_slot %}<p><strong>Scheduled {{ scheduled_slot.fulfillment_method|lower }}:</strong> {{ scheduled_slot.starts_at.strftime('%b %d, %Y %I:%M %p') }}</p>{% endif %}
+      {% if order.payment_method == 'GCash' %}
+      <section class="gcash-review-panel panel p-3 mb-3" aria-labelledby="customGcashReviewTitle">
+        <h2 class="h5 fw-bold" id="customGcashReviewTitle">Check GCash payment</h2>
+        <p>Request total: <strong>₱{{ '%.2f'|format(order.total_price) }}</strong></p>
+        {% if order.payment_proof_filename %}
+        <a href="{{ payment_proof_url }}" target="_blank" rel="noopener">
+          <img class="payment-proof-review-image" src="{{ payment_proof_url }}" alt="Customer's GCash payment proof for custom request {{ order.id }}">
+        </a>
+        <p class="small text-secondary mt-2">Uploaded {{ order.payment_proof_uploaded_at }}{% if order.payment_reviewed_at %} · reviewed {{ order.payment_reviewed_at }}{% endif %}</p>
+        {% if order.payment_review_note %}<p class="alert alert-info">{{ order.payment_review_note }}</p>{% endif %}
+        {% if order.payment_status == 'Pending' %}
+        <form method="post" action="{{ url_for('admin_review_payment', order_type='Custom', order_id=order.id, decision='approve') }}" class="mb-2">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <label class="form-label" for="customGcashApproveNote">Optional note for customer</label>
+          <textarea class="form-control mb-2" id="customGcashApproveNote" name="review_note" rows="2" maxlength="1000"></textarea>
+          <button class="btn btn-success" type="submit" data-confirm="Approve this payment and mark the request Paid?">Approve payment</button>
+        </form>
+        <form method="post" action="{{ url_for('admin_review_payment', order_type='Custom', order_id=order.id, decision='reject') }}">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <label class="form-label" for="customGcashRejectNote">Reason for rejection</label>
+          <textarea class="form-control mb-2" id="customGcashRejectNote" name="review_note" rows="2" maxlength="1000" required></textarea>
+          <button class="btn btn-outline-danger" type="submit" data-confirm="Reject this receipt? The customer can upload a corrected one.">Reject receipt</button>
+        </form>
+        {% endif %}
+        {% else %}
+        <p class="alert alert-warning">Waiting for the customer to upload proof. Do not confirm until payment is reviewed and marked Paid.</p>
+        {% endif %}
+      </section>
+      {% endif %}
+      {% if materials %}
+      <h3 class="h6 mt-4">Material price snapshot at request time</h3>
+      <div class="table-responsive"><table class="table table-sm align-middle">
+        <thead><tr><th>Material</th><th>Qty</th><th>Unit price</th><th class="text-end">Subtotal</th></tr></thead>
+        <tbody>{% for material in materials %}<tr><td>{{ material.material_name }}<div class="small text-secondary">{{ material.category }}</div></td><td>{{ '%.2f'|format(material.quantity) }}</td><td>₱{{ '%.2f'|format(material.unit_price) }}</td><td class="text-end">₱{{ '%.2f'|format(material.line_total) }}</td></tr>{% endfor %}</tbody>
+      </table></div>
+      {% else %}
+      <p class="small text-secondary">No material price snapshot is available for this request.</p>
+      {% endif %}
+      {% if order.cancellation_reason %}
+      <p class="alert alert-warning"><strong>Cancellation reason:</strong> {{ order.cancellation_reason }}</p>
+      {% endif %}
+      <section class="border-top pt-3 mt-3">
+        <h2 class="h6 fw-bold">Staff notes (private)</h2>
+        {% for note in admin_notes %}<div class="small border rounded-3 p-2 mb-2"><strong>{{ note.admin_name or 'Admin' }} · {{ note.created_at }}</strong><p class="mb-0 mt-1">{{ note.note }}</p></div>{% else %}<p class="small text-secondary">No internal notes.</p>{% endfor %}
+        <form method="post" action="{{ url_for('admin_order_note_add', order_type='Custom', order_id=order.id) }}">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><label class="form-label small" for="internalCustomNote">Add a private note</label>
+          <textarea class="form-control mb-2" id="internalCustomNote" name="note" maxlength="2000" rows="2" required></textarea>
+          <button class="btn btn-sm btn-outline-pink">Save internal note</button>
+        </form>
+      </section>
+      {% if order.reference_image %}
+      <h3 class="h6 mt-4">Uploaded reference image</h3>
+      <img class="admin-design" src="{{ url_for('static',filename='uploads/'+order.reference_image) }}" alt="Customer reference image">
+      {% endif %}
+      {% if order.drawing_image %}
+      <h3 class="h6 mt-4">Customer drawing</h3>
+      <img class="admin-design" src="{{ url_for('static',filename='uploads/'+order.drawing_image) }}" alt="Customer bouquet drawing">
+      {% endif %}
+      <form method="post" class="mt-4" data-confirm-on-cancel
+            data-cancel-confirm="Cancel this custom request? The customer will be notified.">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <label class="form-label" for="customStatus">Request status</label>
+        <select class="form-select mb-3" id="customStatus" name="status" data-cancellation-status>
+          {% for s in statuses %}<option {% if order.status==s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+        </select>
+        <div class="mb-3" data-cancellation-reason-field>
+          <label class="form-label" for="customCancellationReason">Reason for cancellation</label>
+          <textarea class="form-control" id="customCancellationReason" name="cancellation_reason"
+                    rows="3" maxlength="1000" placeholder="Tell the customer why this request is being cancelled.">{{ order.cancellation_reason or '' }}</textarea>
+          <div class="form-text">Required when the status is Cancelled.</div>
+        </div>
+        <button class="btn btn-pink">Update and notify customer</button>
+      </form>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    {% if order.fulfillment_method == 'Pickup' or (order.fulfillment_method == 'Delivery' and order.delivery_address) %}
+    {% set map_order_id = order.id %}
+    {% set map_order_status = order.status %}
+    {% set map_destination = order.delivery_address %}
+    {% set map_fulfillment_method = order.fulfillment_method %}
+    {% set map_route_url = url_for('custom_delivery_map_data', custom_id=order.id) %}
+    {% include '_delivery_map.html' %}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

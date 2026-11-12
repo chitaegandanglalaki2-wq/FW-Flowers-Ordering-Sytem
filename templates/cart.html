@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+{% block title %}Shopping Cart{% endblock %}
+{% block content %}
+<div class="cart-page-heading mb-4">
+  {% set cart_icon_class = 'cart-page-icon' %}
+  {% include '_cart_icon.html' %}
+  <div>
+    <p class="eyebrow mb-1">YOUR BOUQUETS</p>
+    <h1 class="h2 fw-bold mb-0">Shopping Cart</h1>
+    <p class="text-secondary mb-0">Review your flowers before checkout.</p>
+  </div>
+</div>
+<div class="panel p-3 p-md-4 cart-selection-panel">
+  {% if items %}
+  <div class="table-responsive">
+    <form method="post" action="{{ url_for('cart_checkout_selected') }}" id="cartSelectionForm">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <table class="table align-middle">
+        <thead>
+          <tr>
+            <th scope="col">
+              <input class="form-check-input" type="checkbox" id="selectAllCartItems"
+                     aria-label="Select all cart items" checked>
+            </th>
+            <th scope="col">Product</th><th scope="col">Unit price</th>
+            <th scope="col">Quantity</th><th scope="col">Total</th><th scope="col"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr data-cart-row>
+            <td>
+              <input class="form-check-input" type="checkbox" name="product_ids"
+                     value="{{ item.product.id }}" data-cart-item-checkbox
+                     data-line-total="{{ '%.2f'|format(item.line_total) }}"
+                     {% if item.product.stock >= item.quantity and item.product.stock > 0 %}checked{% else %}disabled{% endif %}
+                     aria-label="Select {{ item.product.name }} for checkout">
+            </td>
+            <td>
+              <a class="product-title-link fw-semibold" href="{{ url_for('product_detail', product_id=item.product.id) }}">{{ item.product.name }}</a>
+              <div class="small text-secondary">{{ item.product.color }}</div>
+            </td>
+            <td>₱{{ '%.2f'|format(item.product.price) }}</td>
+            <td>
+              <div class="input-group input-group-sm cart-quantity-control"
+                   data-cart-quantity data-update-url="{{ url_for('cart_update_quantity', product_id=item.product.id) }}"
+                   data-unit-price="{{ '%.2f'|format(item.product.price) }}"
+                   data-max-quantity="{{ [item.product.stock, 50]|min }}"
+                   data-quantity="{{ item.quantity }}">
+                <button class="btn btn-outline-secondary" type="button" data-quantity-step="-1"
+                        aria-label="Decrease {{ item.product.name }} quantity">−</button>
+                <output class="form-control text-center" data-cart-quantity-value
+                        aria-live="polite">{{ item.quantity }}</output>
+                <button class="btn btn-outline-secondary" type="button" data-quantity-step="1"
+                        aria-label="Increase {{ item.product.name }} quantity">+</button>
+              </div>
+              {% if item.product.stock < 1 %}
+              <span class="small text-danger">Out of stock. Remove this item to continue.</span>
+              {% elif item.quantity > item.product.stock %}
+              <span class="small text-danger">Only {{ item.product.stock }} available. Lower the quantity before checkout.</span>
+              {% else %}
+              <span class="visually-hidden">Maximum available: {{ item.product.stock }}</span>
+              {% endif %}
+            </td>
+            <td>₱<span data-cart-line-subtotal>{{ '%.2f'|format(item.line_total) }}</span></td>
+            <td>
+              <button class="btn btn-outline-danger btn-sm" type="submit"
+                      formaction="{{ url_for('cart_remove',product_id=item.product.id) }}"
+                      formmethod="post" formnovalidate>Remove</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </form>
+  </div>
+  <p class="small text-danger mt-2 mb-0" data-cart-update-message role="status" aria-live="polite"></p>
+  <div class="cart-checkout-summary">
+    <div class="cart-checkout-details">
+      <p class="small text-secondary mb-1"><span data-selected-cart-count>{{ items|length }}</span> selected</p>
+      <p class="small text-secondary mb-2">Delivery is available only within Laguna: free in Cavinti and ₱100 in other Laguna municipalities; pickup is free.</p>
+      <h2 class="h4 mb-0">Selected subtotal: <span class="price" data-selected-cart-subtotal>₱{{ '%.2f'|format(subtotal) }}</span></h2>
+    </div>
+    <button class="btn btn-pink" type="submit" form="cartSelectionForm">Checkout selected items</button>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    {% set cart_icon_class = 'cart-empty-icon' %}
+    {% include '_cart_icon.html' %}
+    <p class="mb-0">Your cart is empty.</p>
+    <a class="btn btn-pink" href="{{ url_for('shop') }}">Browse Flowers</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const cartForm = document.getElementById('cartSelectionForm');
+if (cartForm) {
+  const itemCheckboxes = Array.from(cartForm.querySelectorAll('[data-cart-item-checkbox]'));
+  const selectAllCheckbox = document.getElementById('selectAllCartItems');
+  const selectedCount = document.querySelector('[data-selected-cart-count]');
+  const selectedSubtotal = document.querySelector('[data-selected-cart-subtotal]');
+  const checkoutButton = document.querySelector('.cart-checkout-summary button');
+  const cartMessage = document.querySelector('[data-cart-update-message]');
+  let pendingQuantityUpdates = 0;
+
+  const updateCartSelection = () => {
+    itemCheckboxes.forEach((checkbox) => {
+      const quantityControl = checkbox.closest('[data-cart-row]').querySelector('[data-cart-quantity]');
+      checkbox.dataset.lineTotal = (
+        Number(quantityControl.dataset.unitPrice) * Number(quantityControl.dataset.quantity)
+      ).toFixed(2);
+    });
+    const selectedItems = itemCheckboxes.filter(
+      (checkbox) => checkbox.checked && !checkbox.disabled
+    );
+    const subtotal = selectedItems.reduce(
+      (sum, checkbox) => sum + Number(checkbox.dataset.lineTotal),
+      0
+    );
+    selectedCount.textContent = String(selectedItems.length);
+    selectedSubtotal.textContent = `₱${subtotal.toFixed(2)}`;
+    const availableItems = itemCheckboxes.filter((checkbox) => !checkbox.disabled);
+    selectAllCheckbox.checked =
+      availableItems.length > 0 && selectedItems.length === availableItems.length;
+    selectAllCheckbox.indeterminate =
+      selectedItems.length > 0 && selectedItems.length < availableItems.length;
+    selectAllCheckbox.disabled = availableItems.length === 0;
+    checkoutButton.disabled = selectedItems.length === 0 || pendingQuantityUpdates > 0;
+  };
+
+  selectAllCheckbox.addEventListener('change', () => {
+    itemCheckboxes.forEach((checkbox) => {
+      checkbox.checked = selectAllCheckbox.checked && !checkbox.disabled;
+    });
+    updateCartSelection();
+  });
+  itemCheckboxes.forEach((checkbox) => checkbox.addEventListener('change', updateCartSelection));
+  const updateQuantityDisplay = (control, quantity) => {
+    const maxQuantity = Number(control.dataset.maxQuantity);
+    control.dataset.quantity = String(quantity);
+    control.querySelector('[data-cart-quantity-value]').textContent = String(quantity);
+    control.querySelector('[data-quantity-step="-1"]').disabled = maxQuantity < 1 || quantity <= 1;
+    control.querySelector('[data-quantity-step="1"]').disabled = maxQuantity < 1 || quantity >= maxQuantity;
+    control.closest('[data-cart-row]').querySelector('[data-cart-item-checkbox]').disabled =
+      maxQuantity < 1 || quantity > maxQuantity;
+    const lineTotal = Number(control.dataset.unitPrice) * quantity;
+    control.closest('[data-cart-row]').querySelector('[data-cart-line-subtotal]').textContent =
+      lineTotal.toFixed(2);
+    updateCartSelection();
+  };
+  cartForm.querySelectorAll('[data-cart-quantity]').forEach((control) => {
+    const initialQuantity = Number(control.dataset.quantity);
+    updateQuantityDisplay(control, initialQuantity);
+    control.addEventListener('click', async (event) => {
+      const button = event.target.closest('[data-quantity-step]');
+      if (!button || button.disabled) return;
+      const previousQuantity = Number(control.dataset.quantity);
+      const maxQuantity = Number(control.dataset.maxQuantity);
+      const requestedQuantity = Math.min(
+        maxQuantity,
+        Math.max(1, previousQuantity + Number(button.dataset.quantityStep))
+      );
+      if (requestedQuantity === previousQuantity) return;
+      cartMessage.textContent = '';
+      updateQuantityDisplay(control, requestedQuantity);
+      pendingQuantityUpdates += 1;
+      updateCartSelection();
+      control.querySelectorAll('button').forEach((stepButton) => {
+        stepButton.disabled = true;
+      });
+      try {
+        const body = new FormData();
+        body.append('_csrf', cartForm.querySelector('[name="_csrf"]').value);
+        body.append('quantity', String(requestedQuantity));
+        const response = await fetch(control.dataset.updateUrl, {
+          method: 'POST',
+          body,
+          headers: { Accept: 'application/json' }
+        });
+        const result = await response.json().catch(() => null);
+        if (!response.ok || !result || !result.success) {
+          throw new Error(
+            (result && result.message) || 'The cart quantity could not be updated.'
+          );
+        }
+        updateQuantityDisplay(control, result.quantity);
+      } catch (error) {
+        updateQuantityDisplay(control, previousQuantity);
+        cartMessage.textContent = error.message || 'The cart quantity could not be updated.';
+      } finally {
+        pendingQuantityUpdates -= 1;
+        updateCartSelection();
+        const currentQuantity = Number(control.dataset.quantity);
+        control.querySelector('[data-quantity-step="-1"]').disabled =
+          Number(control.dataset.maxQuantity) < 1 || currentQuantity <= 1;
+        control.querySelector('[data-quantity-step="1"]').disabled =
+          Number(control.dataset.maxQuantity) < 1 ||
+          currentQuantity >= Number(control.dataset.maxQuantity);
+      }
+    });
+  });
+  updateCartSelection();
+}
+</script>
+{% endblock %}

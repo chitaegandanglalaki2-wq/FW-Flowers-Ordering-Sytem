@@ -1,0 +1,7 @@
+{% if gcash.qr_filename %}
+<div class="gcash-qr-code mt-3">
+  <p class="fw-semibold mb-2">Scan the shop’s GCash QR code</p>
+  <img class="img-thumbnail" src="{{ url_for('static', filename='uploads/' ~ gcash.qr_filename) }}"
+       alt="Shop GCash QR code" loading="lazy" style="max-width: 240px">
+</div>
+{% endif %}

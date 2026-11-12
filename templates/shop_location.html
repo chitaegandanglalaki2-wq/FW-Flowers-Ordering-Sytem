@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Shop for Pick-up | FuzzyWire Bouquet{% endblock %}
+{% block content %}
+<div class="admin-page-heading">
+  <div>
+    <p class="eyebrow mb-1">PICK UP YOUR ORDER</p>
+    <h1 class="h2 fw-bold mb-1">Shop location</h1>
+    <p class="text-secondary mb-0">Find our shop before you order or come to pick up.</p>
+  </div>
+</div>
+<section class="panel p-3 p-md-4" aria-labelledby="publicShopLocationTitle">
+  <div class="delivery-map-heading">
+    <div>
+      <p class="eyebrow mb-1">SHOP FOR PICK-UP</p>
+      <h2 class="h5 fw-bold mb-1" id="publicShopLocationTitle">{{ shop_location.shop_name }}</h2>
+      <p class="text-secondary mb-0">{{ shop_location.address }}</p>
+    </div>
+    <span class="delivery-map-status">Pickup</span>
+  </div>
+  <div class="delivery-map-canvas" id="publicShopMap"
+       data-location-url="{{ url_for('shop_location_data') }}"
+       aria-label="Map showing the shop pickup location"></div>
+  <p class="delivery-map-message mb-0 mt-2" id="publicShopMapMessage"
+     role="status" aria-live="polite">Loading the shop location…</p>
+  <p class="small text-secondary mt-2 mb-0">Pickup is free. Please wait until your order is confirmed and ready before coming to the shop.</p>
+</section>
+{% endblock %}

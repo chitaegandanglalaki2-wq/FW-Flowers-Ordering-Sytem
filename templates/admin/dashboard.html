@@ -1,0 +1,275 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block admin_content %}
+<div class="admin-page-heading">
+  <div>
+    <p class="eyebrow mb-1">STORE OVERVIEW</p>
+    <h1 class="h2 fw-bold mb-1">Welcome back</h1>
+    <p class="text-secondary mb-0">See what needs attention and manage today's work.</p>
+  </div>
+  <div class="admin-heading-actions">
+    <a class="btn btn-outline-pink" href="{{ url_for('admin_order_add') }}">Add order</a>
+    <a class="btn btn-pink" href="{{ url_for('admin_orders') }}">View orders</a>
+  </div>
+</div>
+
+<section class="admin-gcash-quick-card panel p-3 p-md-4 mb-4"
+         aria-labelledby="adminGcashQuickTitle">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <div>
+      <p class="eyebrow mb-1">PAYMENT SETTINGS</p>
+      <h2 class="h5 fw-bold mb-1" id="adminGcashQuickTitle">Customer GCash number</h2>
+      <p class="text-secondary small mb-0">This is the number customers see at checkout.</p>
+    </div>
+    <span class="admin-gcash-current-number">{{ gcash_number }}</span>
+  </div>
+  <form method="post" action="{{ url_for('admin_gcash_settings') }}"
+        class="admin-gcash-quick-form mt-3">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label class="visually-hidden" for="dashboardGcashNumber">GCash mobile number</label>
+    <input class="form-control" id="dashboardGcashNumber" name="gcash_number"
+           type="tel" inputmode="tel" autocomplete="tel"
+           pattern="(09[0-9]{9}|[+]63[0-9]{10}|63[0-9]{10})"
+           maxlength="20" value="{{ gcash_number }}" required>
+    <button class="btn btn-pink" type="submit">Update number</button>
+    <a class="btn btn-outline-pink" href="{{ url_for('admin_gcash_settings') }}">Payment settings</a>
+  </form>
+</section>
+
+{% if newest_pending_order %}
+<section class="newest-pending-card mb-4" aria-labelledby="newestPendingOrderTitle">
+  <div class="newest-pending-copy">
+    <p class="newest-pending-kicker mb-1">NEWEST PENDING ORDER</p>
+    <h2 class="h5 fw-bold mb-1" id="newestPendingOrderTitle">
+      #{{ 'C' if newest_pending_order.order_type == 'Custom bouquet' else '' }}{{ newest_pending_order.id }}
+      · {{ newest_pending_order.full_name }}
+    </h2>
+    <p class="small text-secondary mb-2">
+      {{ newest_pending_order.order_type }} · {{ newest_pending_order.created_at }} ·
+      {{ newest_pending_order.order_status }}
+    </p>
+    <span class="newest-pending-payment">
+      {{ newest_pending_order.payment_method }} · {{ newest_pending_order.payment_status }}
+      · ₱{{ '%.2f'|format(newest_pending_order.total) }}
+    </span>
+  </div>
+  <div class="newest-pending-actions">
+    {% if newest_pending_order.order_type == 'Custom bouquet' %}
+    <a class="btn btn-outline-pink" href="{{ url_for('admin_custom_detail', custom_id=newest_pending_order.id) }}">View newest order</a>
+    {% else %}
+    <a class="btn btn-outline-pink" href="{{ url_for('admin_order_detail', order_id=newest_pending_order.id) }}">View newest order</a>
+    {% endif %}
+    <a class="btn btn-pink" href="{{ url_for('admin_orders') }}">View orders</a>
+  </div>
+</section>
+{% endif %}
+
+<div class="admin-stats-grid mb-4">
+  {% for label,value,icon,destination,helper in [
+    ('Sales received',stats.sales,'₱',url_for('admin_analytics'),'See sales report'),
+    ('Orders',stats.orders,'▤',url_for('admin_orders'),'View all orders'),
+    ('Customers',stats.customers,'♙',url_for('admin_customers'),'View customer list'),
+    ('ID checks to review',stats.pending_verifications,'✓',url_for('admin_verifications'),'Review ID photos'),
+    ('Orders to prepare',stats.pending,'◷',url_for('admin_orders'),'View open orders'),
+    ('Low stock',stats.low_stock,'!',url_for('admin_products'),'Update stock')
+  ] %}
+  <div>
+    <a class="stat-card admin-stat-card admin-stat-link h-100" href="{{ destination }}">
+      <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+        <span class="small text-secondary">{{ label }}</span>
+        <span class="stat-icon" aria-hidden="true">{{ icon }}</span>
+      </div>
+      <div class="fs-4 fw-bold">{{ '₱%.2f'|format(value) if label == 'Sales received' else value }}</div>
+      <div class="small text-secondary mt-1">{{ helper }}</div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+{% if admin_notifications %}
+<section class="low-stock-alert mb-4" aria-labelledby="adminNotificationsTitle">
+  <div class="low-stock-alert-icon" aria-hidden="true">!</div>
+  <div class="flex-grow-1">
+    <h2 class="h6 fw-bold mb-1" id="adminNotificationsTitle">New updates</h2>
+    <div class="small">
+      {% for notification in admin_notifications %}
+      <p class="mb-1"><strong>{{ notification.title }}:</strong> {{ notification.message }} <span class="text-secondary">· {{ notification.created_at }}</span></p>
+      {% endfor %}
+    </div>
+  </div>
+  <a class="btn btn-sm btn-outline-pink flex-shrink-0" href="{{ url_for('admin_notifications') }}">View updates</a>
+</section>
+{% endif %}
+
+{% if pending_verifications %}
+<section class="panel p-3 p-md-4 mb-4" aria-labelledby="pendingVerificationsTitle">
+  <div class="panel-heading">
+    <div>
+      <p class="eyebrow mb-1">NEEDS YOUR REVIEW</p>
+      <h2 class="h5 fw-bold mb-0" id="pendingVerificationsTitle">Customer ID checks</h2>
+    </div>
+    <a class="admin-subtle-link" href="{{ url_for('admin_verifications') }}">View all →</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead><tr><th>Customer</th><th>Valid ID and selfie</th><th>Email</th><th>Registered</th><th>Decision</th></tr></thead>
+      <tbody>
+        {% for customer in pending_verifications %}
+        <tr>
+          <td>{{ customer.full_name }}</td>
+          <td>
+            {% for kind,label in [('front','ID front'),('back','ID back'),('selfie','Selfie')] %}
+              {% set filename = customer.verification_id_front_filename if kind == 'front' else customer.verification_id_back_filename if kind == 'back' else customer.verification_selfie_filename %}
+              {% if filename %}
+              <a class="d-inline-block me-1 mb-1" href="{{ url_for('admin_verification_image', customer_id=customer.id, image_kind=kind) }}" target="_blank" rel="noopener" aria-label="View {{ label }} photo for {{ customer.full_name }}">
+                <img src="{{ url_for('admin_verification_image', customer_id=customer.id, image_kind=kind) }}" alt="{{ label }} of {{ customer.full_name }}" width="72" height="64" style="object-fit:cover">
+              </a>
+              {% else %}<span class="badge text-bg-warning">{{ label }} missing</span>{% endif %}
+            {% endfor %}
+          </td>
+          <td>{{ customer.email }}</td>
+          <td>{{ customer.created_at }}</td>
+          <td>
+            <div class="d-flex flex-column gap-2">
+              <form method="post" action="{{ url_for('admin_verification_decision', customer_id=customer.id, decision='approve') }}" data-confirm-message="Approve {{ customer.full_name }}'s ID check?">
+                <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-pink" type="submit">Approve</button>
+              </form>
+              <form method="post" action="{{ url_for('admin_verification_decision', customer_id=customer.id, decision='reject') }}" data-confirm-message="Reject this ID check? The reason will be sent to the customer.">
+                <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                <label class="visually-hidden" for="dashboardRejectionReason{{ customer.id }}">Reason for rejecting {{ customer.full_name }}'s ID</label>
+                <input class="form-control form-control-sm mb-2" id="dashboardRejectionReason{{ customer.id }}"
+                       name="rejection_reason" maxlength="1000" placeholder="Reason required to reject" required>
+                <button class="btn btn-sm btn-outline-secondary" type="submit">Reject</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="small text-secondary mt-2 mb-0">Open each photo to check the ID and selfie. Photos are removed after the decision.</p>
+</section>
+{% endif %}
+
+{% if low_stock_products %}
+<section class="low-stock-alert mb-4" aria-labelledby="lowStockTitle">
+  <div class="low-stock-alert-icon" aria-hidden="true">!</div>
+  <div class="flex-grow-1">
+    <h2 class="h6 fw-bold mb-1" id="lowStockTitle">{{ low_stock_products|length }} bouquet{{ '' if low_stock_products|length == 1 else 's' }} running low</h2>
+    <p class="small mb-2">These bouquets have five or fewer items left.</p>
+    <div class="low-stock-product-list">
+      {% for product in low_stock_products %}
+      <span>{{ product.name }} <strong>{{ product.stock }} left</strong></span>
+      {% endfor %}
+    </div>
+  </div>
+  <a class="btn btn-sm btn-outline-pink flex-shrink-0" href="{{ url_for('admin_products') }}">Manage stock</a>
+</section>
+{% endif %}
+{% if low_stock_materials %}
+<section class="low-stock-alert mb-4" aria-labelledby="lowStockMaterialsTitle">
+  <div class="low-stock-alert-icon" aria-hidden="true">!</div>
+  <div class="flex-grow-1">
+    <h2 class="h6 fw-bold mb-1" id="lowStockMaterialsTitle">{{ low_stock_materials|length }} custom material{{ '' if low_stock_materials|length == 1 else 's' }} running low</h2>
+    <p class="small mb-2">These materials are running low. Custom requests are still available.</p>
+    <div class="low-stock-product-list">
+      {% for material in low_stock_materials %}
+      <span>{{ material.name }} <strong>{{ material.stock }} {{ material.unit }} left</strong></span>
+      {% endfor %}
+    </div>
+  </div>
+  <a class="btn btn-sm btn-outline-pink flex-shrink-0" href="{{ url_for('admin_materials') }}">Manage materials</a>
+</section>
+{% endif %}
+
+<div class="row g-4">
+  <div class="col-xl-7">
+    <section class="panel admin-chart-panel h-100">
+      <div class="panel-heading"><div><p class="eyebrow mb-1">SALES</p><h2 class="h5 fw-bold mb-0">Sales received</h2></div><span class="chart-period">Last 7 days</span></div>
+      <div class="chart-wrap"><canvas id="salesChart" aria-label="Paid order value by day for the last seven days"></canvas></div>
+      <div class="chart-fallback" data-chart-fallback hidden>Sales chart unavailable. Check your connection and try again.</div>
+      <details class="analytics-data-details mt-3">
+        <summary>View daily sales data</summary>
+        <div class="table-responsive mt-2"><table class="table table-sm align-middle mb-0"><thead><tr><th>Date</th><th class="text-end">Paid sales</th></tr></thead><tbody>
+          {% for row in daily %}<tr><td>{{ row.day }}</td><td class="text-end">₱{{ '%.2f'|format(row.total) }}</td></tr>{% endfor %}
+        </tbody></table></div>
+      </details>
+    </section>
+  </div>
+  <div class="col-xl-5">
+    <section class="panel admin-chart-panel h-100">
+      <div class="panel-heading"><div><p class="eyebrow mb-1">CUSTOMER FAVORITES</p><h2 class="h5 fw-bold mb-0">Popular bouquets</h2></div><a class="admin-subtle-link" href="{{ url_for('admin_products') }}">Products →</a></div>
+      {% if best %}
+      <div class="chart-wrap"><canvas id="bestChart" aria-label="Best-selling items"></canvas></div>
+      <div class="chart-fallback" data-chart-fallback hidden>Product chart unavailable. Check your connection and try again.</div>
+      <details class="analytics-data-details mt-3">
+        <summary>View delivered bouquet quantities</summary>
+        <div class="table-responsive mt-2"><table class="table table-sm align-middle mb-0"><thead><tr><th>Bouquet</th><th class="text-end">Units</th></tr></thead><tbody>
+          {% for row in best %}<tr><td>{{ row.item_name }}</td><td class="text-end">{{ row.quantity }}</td></tr>{% endfor %}
+        </tbody></table></div>
+      </details>
+      {% else %}
+      <div class="empty-state compact"><span aria-hidden="true">🌼</span><p class="mb-0">Sales will appear here after your first order.</p></div>
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/admin.js', v='20261021-admin-polish') }}" defer></script>
+<script>
+new Chart(document.getElementById('salesChart'), {
+  type: 'line',
+  data: {
+    labels: {{ daily|map(attribute='day')|map('string')|list|tojson }},
+    datasets: [{
+      label: 'Paid sales (PHP)',
+      data: {{ daily|map(attribute='total')|list|tojson }},
+      borderColor: '#e94375',
+      backgroundColor: 'rgba(233,67,117,.12)',
+      pointBackgroundColor: '#e94375',
+      pointRadius: 4,
+      fill: true,
+      tension: .35
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, grid: { color: '#f3edf0' }, ticks: { color: '#8b8490', callback: value => `₱${Number(value).toLocaleString()}` } },
+      x: { grid: { display: false }, ticks: { color: '#8b8490' } }
+    }
+  }
+});
+{% if best %}
+new Chart(document.getElementById('bestChart'), {
+  type: 'bar',
+  data: {
+    labels: {{ best|map(attribute='item_name')|list|tojson }},
+    datasets: [{
+      label: 'Quantity sold',
+      data: {{ best|map(attribute='quantity')|list|tojson }},
+      backgroundColor: ['#e94375', '#f78eaa', '#f8b2c3', '#f7cdd8', '#f9dfe7'],
+      borderRadius: 7,
+      maxBarThickness: 28
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { beginAtZero: true, grid: { color: '#f3edf0' }, ticks: { precision: 0, color: '#8b8490' } },
+      y: { grid: { display: false }, ticks: { color: '#5f5864' } }
+    }
+  }
+});
+{% endif %}
+</script>
+{% endblock %}

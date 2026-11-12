@@ -1,0 +1,23 @@
+<div class="notifications-page-heading mb-4">
+  <div>
+    <p class="eyebrow mb-1">{{ 'STORE UPDATES' if current_user.role == 'customer' else 'ADMIN UPDATES' }}</p>
+    <h1 class="h2 fw-bold mb-1">Notifications</h1>
+    <p class="text-secondary mb-0">Unread alerts stay marked until you open them.</p>
+  </div>
+</div>
+<div class="notification-list">
+  {% for n in notifications %}
+  <a class="notification-card{% if not n.is_read %} notification-card-unread{% endif %}"
+     href="{% if current_user.role == 'admin' %}{{ url_for('open_admin_notification', notification_id=n.id) }}{% else %}{{ url_for('open_customer_notification', notification_id=n.id) }}{% endif %}">
+    <span class="notification-card-icon" aria-hidden="true">✿</span>
+    <span class="notification-card-content">
+      <strong>{{ n.title }}{% if not n.is_read %}<span class="notification-unread-label">New</span>{% endif %}</strong>
+      <span>{{ n.message }}</span>
+      <small>{{ n.created_at }}</small>
+    </span>
+    <span class="notification-card-arrow" aria-hidden="true">→</span>
+  </a>
+  {% else %}
+  <div class="panel p-4 text-center text-secondary">No notifications yet. New updates will appear here.</div>
+  {% endfor %}
+</div>

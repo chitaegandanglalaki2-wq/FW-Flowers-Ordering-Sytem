@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="admin-layout">
+  <aside class="admin-floating-menu" id="adminMenu">
+    <nav class="admin-sidebar" aria-label="Admin menu" data-admin-unread-url="{{ url_for('admin_notification_unread_count') }}">
+      <div class="admin-menu-heading">
+        <span class="admin-menu-mark" aria-hidden="true">FW</span>
+        <div>
+          <div class="admin-menu-title">Admin Panel</div>
+          <div class="admin-menu-caption">Manage your shop</div>
+        </div>
+      </div>
+      <div class="admin-menu-label">MENU</div>
+      <div class="admin-menu-links">
+        <a href="{{ url_for('admin_dashboard') }}" class="admin-menu-link{% if request.endpoint == 'admin_dashboard' %} active{% endif %}"{% if request.endpoint == 'admin_dashboard' %} aria-current="page"{% endif %}>
+          <span class="admin-menu-icon" aria-hidden="true">⌂</span><span>Dashboard</span>
+        </a>
+        <a href="{{ url_for('admin_analytics') }}" class="admin-menu-link{% if request.endpoint == 'admin_analytics' %} active{% endif %}"{% if request.endpoint == 'admin_analytics' %} aria-current="page"{% endif %}>
+          <span class="admin-menu-icon" aria-hidden="true">▥</span><span>Analytics</span>
+        </a>
+        <a href="{{ url_for('admin_order_add') }}" class="admin-menu-link{% if request.endpoint == 'admin_order_add' %} active{% endif %}"{% if request.endpoint == 'admin_order_add' %} aria-current="page"{% endif %}>
+          <span class="admin-menu-icon" aria-hidden="true">＋</span><span>Add Order</span>
+        </a>
+        <a href="{{ url_for('admin_notifications') }}" class="admin-menu-link{% if request.endpoint == 'admin_notifications' %} active{% endif %}"{% if request.endpoint == 'admin_notifications' %} aria-current="page"{% endif %}>
+          <span class="admin-menu-icon" aria-hidden="true">♧</span><span>Notifications</span>
+          <span class="admin-menu-count" data-admin-notification-count{% if not admin_unread_notifications %} hidden{% endif %}>{{ admin_unread_notifications }}</span>
+        </a>
+        <a href="{{ url_for('admin_products') }}" class="admin-menu-link{% if request.endpoint in ['admin_products', 'admin_product_add'] %} active{% endif %}"{% if request.endpoint in ['admin_products', 'admin_product_add'] %} aria-current="page"{% endif %}>
+          <span class="admin-menu-icon" aria-hidden="true">◇</span><span>Products &amp; Stock</span>
+          <span class="admin-menu-count" data-admin-product-count{% if not admin_low_stock_products_count %} hidden{% endif %}>{{ admin_low_stock_products_count }}</span>
+        </a>
+        <a href="{{ url_for('admin_materials') }}" class="admin-menu-link{% if request.endpoint in ['admin_materials', 'admin_material_edit'] %} active{% endif %}"{% if request.endpoint in ['admin_materials', 'admin_material_edit'] %} aria-current="page"{% endif %}>
+          <span class="admin-menu-icon" aria-hidden="true">✿</span><span>Materials</span>
+          <span class="admin-menu-count" data-admin-material-count{% if not admin_low_stock_materials_count %} hidden{% endif %}>{{ admin_low_stock_materials_count }}</span>
+        </a>
+        <a href="{{ url_for('admin_vouchers') }}" class="admin-menu-link{% if request.endpoint in ['admin_vouchers', 'admin_voucher_edit', 'admin_voucher_delete'] %} active{% endif %}"{% if request.endpoint in ['admin_vouchers', 'admin_voucher_edit', 'admin_voucher_delete'] %} aria-current="page"{% endif %}>
+          <span class="admin-menu-icon" aria-hidden="true">%</span><span>Vouchers</span>
+        </a>
+        <a href="{{ url_for('admin_activity') }}" class="admin-menu-link{% if request.endpoint == 'admin_activity' %} active{% endif %}"{% if request.endpoint == 'admin_activity' %} aria-current="page"{% endif %}>
+          <span class="admin-menu-icon" aria-hidden="true">↻</span><span>Activity</span>
+        </a>
+        <a href="{{ url_for('admin_orders') }}" class="admin-menu-link{% if request.endpoint in ['admin_orders', 'admin_order_detail', 'admin_custom_orders', 'admin_custom_detail'] %} active{% endif %}"{% if request.endpoint in ['admin_orders', 'admin_order_detail', 'admin_custom_orders', 'admin_custom_detail'] %} aria-current="page"{% endif %}>
+          <span class="admin-menu-icon" aria-hidden="true">▤</span><span>Orders</span>
+          <span class="admin-menu-count" data-admin-order-count{% if not admin_new_order_count %} hidden{% endif %}>{{ admin_new_order_count }}</span>
+        </a>
+        <a href="{{ url_for('admin_payments') }}" class="admin-menu-link{% if request.endpoint == 'admin_payments' %} active{% endif %}"{% if request.endpoint == 'admin_payments' %} aria-current="page"{% endif %}>
+          <span class="admin-menu-icon" aria-hidden="true">₱</span><span>Payments</span>
+          <span class="admin-menu-count" data-admin-payment-count{% if not admin_pending_payments_count %} hidden{% endif %}>{{ admin_pending_payments_count }}</span>
+        </a>
+        <a href="{{ url_for('admin_gcash_settings') }}" class="admin-menu-link{% if request.endpoint == 'admin_gcash_settings' %} active{% endif %}"{% if request.endpoint == 'admin_gcash_settings' %} aria-current="page"{% endif %}>
+          <span class="admin-menu-icon" aria-hidden="true">⚙</span><span>Payment Settings</span>
+        </a>
+        <a href="{{ url_for('admin_shop_location') }}" class="admin-menu-link{% if request.endpoint == 'admin_shop_location' %} active{% endif %}"{% if request.endpoint == 'admin_shop_location' %} aria-current="page"{% endif %}>
+          <span class="admin-menu-icon" aria-hidden="true">⌖</span><span>Shop Location</span>
+        </a>
+        <a href="{{ url_for('admin_customers') }}" class="admin-menu-link{% if request.endpoint == 'admin_customers' %} active{% endif %}"{% if request.endpoint == 'admin_customers' %} aria-current="page"{% endif %}>
+          <span class="admin-menu-icon" aria-hidden="true">♙</span><span>Customers</span>
+        </a>
+        <a href="{{ url_for('admin_verifications') }}" class="admin-menu-link{% if request.endpoint == 'admin_verifications' %} active{% endif %}"{% if request.endpoint == 'admin_verifications' %} aria-current="page"{% endif %}>
+          <span class="admin-menu-icon" aria-hidden="true">✓</span><span>ID Checks</span>
+          <span class="admin-menu-count" data-admin-verification-count{% if not pending_verification_count %} hidden{% endif %}>{{ pending_verification_count }}</span>
+        </a>
+        <a href="{{ url_for('admin_feedback') }}" class="admin-menu-link{% if request.endpoint == 'admin_feedback' %} active{% endif %}"{% if request.endpoint == 'admin_feedback' %} aria-current="page"{% endif %}>
+          <span class="admin-menu-icon" aria-hidden="true">☆</span><span>Feedback</span>
+          <span class="admin-menu-count" data-admin-feedback-count{% if not admin_new_feedback_count %} hidden{% endif %}>{{ admin_new_feedback_count }}</span>
+        </a>
+        <a href="{{ url_for('admin_chats') }}" class="admin-menu-link{% if request.endpoint in ['admin_chats', 'admin_chat_detail'] %} active{% endif %}"{% if request.endpoint in ['admin_chats', 'admin_chat_detail'] %} aria-current="page"{% endif %}>
+          <span class="admin-menu-icon" aria-hidden="true">✉</span><span>Customer Messages</span>
+          <span class="admin-menu-count" data-admin-chat-count{% if not admin_unread_chat_count %} hidden{% endif %}>{{ admin_unread_chat_count }}</span>
+        </a>
+      </div>
+    </nav>
+  </aside>
+  <section class="admin-main-column">{% block admin_content %}{% endblock %}</section>
+</div>
+{% endblock %}

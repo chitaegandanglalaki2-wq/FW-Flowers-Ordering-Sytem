@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+{% block title %}Home | FuzzyWire Bouquet{% endblock %}
+{% block content %}
+<section class="hero p-4 p-lg-5 mb-4" aria-label="Featured bouquet advertisements">
+  <div class="hero-carousel" data-hero-carousel tabindex="0" aria-roledescription="carousel">
+    {% for p in products[:4] %}
+    <article class="hero-slide" data-hero-slide aria-roledescription="slide"
+             aria-label="{{ loop.index }} of {{ products[:4]|length }}" {% if not loop.first %}hidden{% endif %}>
+      <div class="row align-items-center g-4">
+        <div class="col-lg-6">
+          <p class="eyebrow mb-2">{{ p.flower_type }} bouquet · Featured pick</p>
+          <h1 class="display-5 fw-bold hero-title">{{ p.name }}</h1>
+          <p class="lead hero-copy">{{ p.description or 'A thoughtful bouquet, made with care and ready to brighten someone’s day.' }}</p>
+          <div class="d-flex flex-wrap gap-2 mt-4">
+            <a class="btn btn-pink btn-lg" href="{{ url_for('shop') }}">Shop bouquets <span aria-hidden="true">→</span></a>
+            <a class="btn btn-outline-pink btn-lg" href="{{ url_for('custom_order') if current_user and current_user.role == 'customer' else url_for('login') }}">Create a custom bouquet</a>
+          </div>
+          <p class="price-promo mt-4 mb-0"><span aria-hidden="true">✿</span> {{ p.color }} blooms, starting at <strong>₱{{ '%.2f'|format(p.price) }}</strong></p>
+          <div class="hero-note mt-4"><span class="hero-note-icon" aria-hidden="true">✿</span> Handcrafted with love, just for them.</div>
+        </div>
+        <div class="col-lg-6">
+          <div class="hero-visual">
+            {% if p.image_filename %}
+            <img src="{{ url_for('static',filename='uploads/'+p.image_filename) }}" alt="{{ p.name }} bouquet">
+            {% else %}
+            <img class="illustrated-bouquet" src="{{ url_for('static',filename='bouquet-art.svg') }}" alt="Illustrated pink flower bouquet">
+            {% endif %}
+            <div class="hero-sticker"><span>Made</span><strong>with love</strong><span aria-hidden="true">♥</span></div>
+          </div>
+        </div>
+      </div>
+    </article>
+    {% else %}
+    <article class="hero-slide" data-hero-slide aria-roledescription="slide" aria-label="Featured bouquet">
+      <div class="row align-items-center g-4">
+        <div class="col-lg-6">
+          <p class="eyebrow mb-2">A LITTLE FLOWER MAGIC</p>
+          <h1 class="display-5 fw-bold hero-title">Fresh flowers for every moment.</h1>
+          <p class="lead hero-copy">Make someone's day special with a thoughtful bouquet, made with care and delivered with love.</p>
+          <div class="d-flex flex-wrap gap-2 mt-4">
+            <a class="btn btn-pink btn-lg" href="{{ url_for('shop') }}">Shop bouquets <span aria-hidden="true">→</span></a>
+            <a class="btn btn-outline-pink btn-lg" href="{{ url_for('custom_order') if current_user and current_user.role == 'customer' else url_for('login') }}">Create a custom bouquet</a>
+          </div>
+          <p class="price-promo mt-4 mb-0"><span aria-hidden="true">✿</span> Get beautiful flowers starting at just <strong>₱15!</strong></p>
+          <div class="hero-note mt-4"><span class="hero-note-icon" aria-hidden="true">✿</span> Handcrafted with love, just for them.</div>
+        </div>
+        <div class="col-lg-6">
+          <div class="hero-visual">
+            <img class="illustrated-bouquet" src="{{ url_for('static',filename='bouquet-art.svg') }}" alt="Illustrated pink flower bouquet">
+            <div class="hero-sticker"><span>Made</span><strong>with love</strong><span aria-hidden="true">♥</span></div>
+          </div>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+    {% if products|length > 1 %}
+    <div class="hero-carousel-controls" aria-label="Advertisement controls">
+      <button class="hero-carousel-arrow" type="button" data-hero-previous aria-label="Previous advertisement">
+        <span aria-hidden="true">←</span>
+      </button>
+      <div class="hero-carousel-dots" role="group" aria-label="Choose an advertisement">
+        {% for p in products[:4] %}
+        <button class="hero-carousel-dot" type="button" data-hero-dot="{{ loop.index0 }}"
+                aria-label="Show advertisement {{ loop.index }}" aria-current="{{ 'true' if loop.first else 'false' }}"></button>
+        {% endfor %}
+      </div>
+      <button class="hero-carousel-arrow" type="button" data-hero-next aria-label="Next advertisement">
+        <span aria-hidden="true">→</span>
+      </button>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+{% if current_user and current_user.role == 'customer' and available_vouchers %}
+<section class="voucher-home-announcement panel p-3 p-md-4 mb-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div>
+      <p class="eyebrow mb-1">A LITTLE THANK-YOU</p>
+      <h2 class="h4 fw-bold mb-1">Claim Your FREE Voucher! Limited Time Only!</h2>
+      <p class="text-secondary mb-0">{{ available_vouchers|length }} voucher{% if available_vouchers|length != 1 %}s{% endif %} available to claim.</p>
+    </div>
+    <a class="btn btn-pink" href="{{ url_for('customer_vouchers') }}">View and collect vouchers</a>
+  </div>
+  <div class="row g-2 mt-2">
+    {% for voucher in available_vouchers[:3] %}
+    <div class="col-md-4">
+      <div class="border rounded-3 bg-white p-3 h-100">
+        <div class="fw-semibold">{{ voucher.name }}</div>
+        <div class="price fw-bold">
+          {% if voucher.discount_type == 'Percent' %}{{ '%.2f'|format(voucher.discount_value) }}% off
+          {% else %}₱{{ '%.2f'|format(voucher.discount_value) }} off{% endif %}
+        </div>
+        <div class="small text-secondary">Code {{ voucher.code }}</div>
+        <form class="mt-2" method="post" action="{{ url_for('customer_voucher_claim', voucher_id=voucher.id) }}">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button class="btn btn-outline-pink btn-sm" type="submit">Claim</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<button class="voucher-float-trigger btn btn-pink" type="button" data-bs-toggle="modal"
+        data-bs-target="#collectVoucherModal" aria-label="Open voucher collection popup">
+  <span aria-hidden="true">%</span> Collect Voucher
+</button>
+
+<div class="modal fade" id="collectVoucherModal" tabindex="-1" aria-labelledby="collectVoucherTitle"
+     aria-hidden="true" data-collect-voucher-modal>
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center px-4 pt-0 pb-4">
+        <span class="voucher-modal-icon" aria-hidden="true">%</span>
+        <p class="eyebrow mt-3 mb-1">A GIFT FOR YOU</p>
+        <h2 class="h4 fw-bold" id="collectVoucherTitle">Claim Your FREE Voucher! Limited Time Only!</h2>
+        {% set voucher = available_vouchers[0] %}
+        <p class="mb-1"><strong>{{ voucher.name }}</strong></p>
+        <p class="price fs-5 mb-2">
+          {% if voucher.discount_type == 'Percent' %}{{ '%.2f'|format(voucher.discount_value) }}% off
+          {% else %}₱{{ '%.2f'|format(voucher.discount_value) }} off{% endif %}
+        </p>
+        <p class="small text-secondary">
+          Code {{ voucher.code }}
+          {% if voucher.expires_at %} · Expires {{ voucher.expires_at.strftime('%b %d, %Y at %I:%M %p') }}{% endif %}
+        </p>
+        <form method="post" action="{{ url_for('customer_voucher_claim', voucher_id=voucher.id) }}">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button class="btn btn-pink btn-lg w-100" type="submit">Claim this voucher</button>
+        </form>
+        <a class="btn btn-link mt-2" href="{{ url_for('customer_vouchers') }}">See all vouchers</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<section class="service-strip mb-5" aria-label="Our service promises">
+  <div class="service-item"><span aria-hidden="true">✿</span><div><strong>Fresh flowers</strong><small>Thoughtfully selected</small></div></div>
+  <div class="service-item"><span aria-hidden="true">♡</span><div><strong>Custom bouquets</strong><small>Made your way</small></div></div>
+  <div class="service-item"><span aria-hidden="true">➜</span><div><strong>Fast delivery</strong><small>To their doorstep</small></div></div>
+  <div class="service-item"><span aria-hidden="true">✓</span><div><strong>Secure ordering</strong><small>Easy and reliable</small></div></div>
+</section>
+
+<section class="panel p-4 p-md-5 mb-5" aria-labelledby="aboutUsTitle">
+  <div class="row align-items-center g-4">
+    <div class="col-lg-7">
+      <p class="eyebrow mb-1">ABOUT US</p>
+      <h2 class="h3 fw-bold mb-2" id="aboutUsTitle">FuzzyWire Bouquet</h2>
+      <p class="text-secondary mb-0">We create thoughtful bouquets and custom floral arrangements to help make your special moments memorable.</p>
+    </div>
+    <div class="col-lg-5">
+      <h3 class="h6 fw-bold">Get in touch</h3>
+      <p class="mb-2"><strong>Email:</strong> <a href="mailto:josellannemaeumali21@gmail.com">josellannemaeumali21@gmail.com</a></p>
+      <p class="mb-0"><strong>Phone:</strong> <a href="tel:+639481568572">+63 948 156 8572</a></p>
+    </div>
+  </div>
+</section>
+
+<section class="facebook-feature mb-5" aria-label="Visit our Facebook page">
+  <img class="facebook-feature-image" src="{{ url_for('static', filename='facebook-page.jpg') }}" alt="FW Flower Facebook page logo">
+  <div class="facebook-feature-copy">
+    <p class="eyebrow mb-1">LET'S STAY CONNECTED</p>
+    <h2 class="h5 fw-bold mb-1">Find us on Facebook</h2>
+    <p class="text-secondary small mb-0">Follow FW Flower for fresh blooms, new designs, and shop updates.</p>
+  </div>
+  <a class="btn btn-facebook" href="https://www.facebook.com/people/FW-flower/61592854640115/" target="_blank" rel="noopener noreferrer">
+    <span aria-hidden="true">f</span> Visit our page
+  </a>
+</section>
+
+<section class="mb-5">
+  <div class="section-heading mb-3">
+    <div><p class="eyebrow mb-1">OUR FAVORITES</p><h2 class="h3 fw-bold mb-0">Featured bouquets</h2></div>
+    <a class="view-all-link" href="{{ url_for('shop') }}">View all bouquets <span aria-hidden="true">→</span></a>
+  </div>
+  <div class="row g-3 g-lg-4">
+    {% for p in products[:4] %}
+    <div class="col-6 col-md-3">
+      <article class="product-card h-100">
+        <a class="product-image-link" href="{{ url_for('product_detail', product_id=p.id) }}" aria-label="View {{ p.name }}">
+          {% if p.image_filename %}<img src="{{ url_for('static',filename='uploads/'+p.image_filename) }}" alt="{{ p.name }}">
+          {% else %}<img class="illustrated-bouquet" src="{{ url_for('static',filename='bouquet-art.svg') }}" alt="{{ p.name }} bouquet illustration">{% endif %}
+        </a>
+        <div class="product-info">
+          <h3 class="h6 fw-bold mb-1"><a class="product-title-link" href="{{ url_for('product_detail', product_id=p.id) }}">{{ p.name }}</a></h3>
+          <p class="small text-secondary mb-2">{{ p.color }} bouquet</p>
+          <p class="product-social-proof mb-2"><span class="review-stars">★</span> {{ '%.1f'|format(p.avg_rating) }} <span class="text-secondary">({{ p.rating_count }})</span> <span class="product-sold-count">· {{ p.total_sold }} sold</span></p>
+          <div class="mb-2">
+            {% if p.stock > 0 %}<span class="badge text-bg-success">Available</span>
+            {% else %}<span class="badge text-bg-danger">Sold out</span>{% endif %}
+          </div>
+          <div class="d-flex justify-content-between align-items-center gap-2">
+            <span class="price fw-bold">₱{{ '%.2f'|format(p.price) }}</span>
+            {% if p.stock > 0 %}
+            <form method="post" action="{{ url_for('cart_add',product_id=p.id) }}" class="d-grid gap-2">
+              <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+              <input type="hidden" name="quantity" value="1">
+              <button class="btn btn-pink btn-sm">Add to cart</button>
+              {% if current_user and current_user.role == 'customer' %}
+              <button class="btn btn-outline-pink btn-sm" formaction="{{ url_for('buy_now',product_id=p.id) }}">Buy now</button>
+              {% endif %}
+            </form>
+            {% else %}
+            <button class="btn btn-outline-secondary btn-sm" disabled>Sold out</button>
+            {% endif %}
+          </div>
+        </div>
+      </article>
+    </div>
+    {% else %}
+    <div class="col-12"><div class="empty-state"><span aria-hidden="true">🌷</span><p class="mb-0">Our bouquets are being arranged. Check back soon.</p></div></div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+{% if current_user and current_user.role == 'customer' and available_vouchers %}
+<script>
+const collectVoucherModal = document.querySelector('[data-collect-voucher-modal]');
+if (collectVoucherModal && window.bootstrap) {
+  const popupKey = `fuzzywire-voucher-popup-{{ available_vouchers[0].id }}`;
+  let shouldShowPopup = true;
+  try {
+    shouldShowPopup = sessionStorage.getItem(popupKey) !== 'shown';
+    if (shouldShowPopup) sessionStorage.setItem(popupKey, 'shown');
+  } catch (error) {
+    shouldShowPopup = true;
+  }
+  if (shouldShowPopup) {
+    window.bootstrap.Modal.getOrCreateInstance(collectVoucherModal).show();
+  }
+}
+</script>
+{% endif %}
+{% endblock %}

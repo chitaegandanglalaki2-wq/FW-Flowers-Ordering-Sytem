@@ -1,0 +1,281 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Store Analytics{% endblock %}
+{% block admin_content %}
+<div class="admin-page-heading">
+  <div>
+    <p class="eyebrow mb-1">SALES AND ORDERS</p>
+    <h1 class="h2 fw-bold mb-1">Analytics</h1>
+    <p class="text-secondary mb-0">See sales, popular bouquets, and order totals.</p>
+  </div>
+  <a class="btn btn-pink" href="{{ url_for('admin_order_add') }}">Add order</a>
+</div>
+
+<form class="panel analytics-filter-panel p-3 p-md-4 mb-4" method="get" id="analyticsFilterForm">
+  <div class="analytics-filter-heading">
+    <div><p class="eyebrow mb-1">DATE RANGE</p><h2 class="h6 fw-bold mb-0">Choose dates</h2></div>
+    <div class="analytics-date-presets" aria-label="Quick date ranges">
+      <button class="btn btn-sm btn-outline-pink" type="button" data-analytics-range="7">7 days</button>
+      <button class="btn btn-sm btn-outline-pink" type="button" data-analytics-range="30">30 days</button>
+      <button class="btn btn-sm btn-outline-pink" type="button" data-analytics-range="month">This month</button>
+    </div>
+  </div>
+  <div class="row align-items-end g-3">
+    <div class="col-sm-5 col-lg-4">
+      <label class="form-label small fw-semibold" for="analyticsStartDate">From</label>
+      <input class="form-control" id="analyticsStartDate" type="date" name="start_date" value="{{ start_date }}">
+    </div>
+    <div class="col-sm-5 col-lg-4">
+      <label class="form-label small fw-semibold" for="analyticsEndDate">To</label>
+      <input class="form-control" id="analyticsEndDate" type="date" name="end_date" value="{{ end_date }}">
+    </div>
+    <div class="col-sm-2 col-lg-4 d-flex gap-2">
+      <button class="btn btn-pink" type="submit">Update report</button>
+      <a class="btn btn-outline-secondary" href="{{ url_for('admin_analytics') }}">Clear dates</a>
+    </div>
+  </div>
+</form>
+
+<div class="analytics-floating-summary" data-analytics-summary>
+  <section class="analytics-floating-panel" id="analyticsSummaryPanel" aria-label="Analytics summary" hidden>
+    <div class="analytics-floating-heading">
+      <div><p class="eyebrow mb-1">QUICK SUMMARY</p><h2 class="h6 fw-bold mb-0">Report totals</h2></div>
+      <button class="analytics-floating-close" type="button" aria-label="Close summary" data-summary-close>&times;</button>
+    </div>
+    <div class="analytics-floating-grid">
+      <a class="stat-card admin-stat-card analytics-floating-card" href="#analyticsTrend">
+        <span class="small text-secondary">Sales received</span>
+        <span class="fs-4 fw-bold price">₱{{ '%.2f'|format(stats.sales) }}</span>
+        <span class="small text-secondary">Bouquets ₱{{ '%.2f'|format(stats.regular_sales) }} · Custom ₱{{ '%.2f'|format(stats.custom_sales) }}</span>
+        <span class="analytics-card-action">View sales trend <span aria-hidden="true">→</span></span>
+      </a>
+      <a class="stat-card admin-stat-card analytics-floating-card" href="{{ url_for('admin_orders', stage='all') }}">
+        <span class="small text-secondary">All orders</span>
+        <span class="fs-4 fw-bold">{{ stats.orders }}</span>
+        <span class="small text-secondary">{{ stats.regular_orders }} bouquets · {{ stats.custom_orders }} custom</span>
+        <span class="analytics-card-action">View orders <span aria-hidden="true">→</span></span>
+      </a>
+      <a class="stat-card admin-stat-card analytics-floating-card" href="{{ url_for('admin_orders', stage='delivered') }}">
+        <span class="small text-secondary">Completed orders</span>
+        <span class="fs-4 fw-bold">{{ stats.delivered }}</span>
+        <span class="small text-secondary">Delivered or picked up in this period</span>
+        <span class="analytics-card-action">View completed <span aria-hidden="true">→</span></span>
+      </a>
+      <a class="stat-card admin-stat-card analytics-floating-card" href="{{ url_for('admin_orders', stage='open') }}">
+        <span class="small text-secondary">Open orders</span>
+        <span class="fs-4 fw-bold">{{ stats.open }}</span>
+        <span class="small text-secondary">Still being fulfilled</span>
+        <span class="analytics-card-action">View open orders <span aria-hidden="true">→</span></span>
+      </a>
+      <a class="stat-card admin-stat-card analytics-floating-card" href="{{ url_for('admin_orders', stage='cancelled') }}">
+        <span class="small text-secondary">Cancelled orders</span>
+        <span class="fs-4 fw-bold">{{ stats.cancelled }}</span>
+        <span class="small text-secondary">Cancelled in this period</span>
+        <span class="analytics-card-action">View cancelled <span aria-hidden="true">→</span></span>
+      </a>
+      <a class="stat-card admin-stat-card analytics-floating-card" href="{{ url_for('admin_customers') }}">
+        <span class="small text-secondary">Customers with orders</span>
+        <span class="fs-4 fw-bold">{{ stats.buyers }}</span>
+        <span class="small text-secondary">Unique customers in this date range</span>
+        <span class="analytics-card-action">View customers <span aria-hidden="true">→</span></span>
+      </a>
+    </div>
+  </section>
+  <button class="analytics-floating-toggle" type="button" aria-expanded="false"
+          aria-controls="analyticsSummaryPanel" data-summary-toggle>
+    <span aria-hidden="true">▦</span><span>Quick summary</span>
+  </button>
+</div>
+<p class="small text-secondary mb-4">Sales totals use the payment records saved in the shop. They do not subtract product costs or confirm cash received outside the website.</p>
+
+<section class="panel p-4 mb-4 analytics-chart-panel" id="analyticsTrend">
+  <div class="panel-heading"><div><p class="eyebrow mb-1">SALES AND ORDERS</p><h2 class="h5 fw-bold mb-0">Sales and order trend</h2></div><span class="chart-period">{{ trend_interval }} totals</span></div>
+  {% if trend %}
+  <div class="chart-wrap"><canvas id="trendChart" aria-label="Paid sales value and order count trend"></canvas></div>
+  <div class="chart-fallback" data-chart-fallback hidden>Trend chart unavailable. The figures are still available in the report data below.</div>
+  <details class="analytics-data-details mt-3">
+    <summary>View trend data</summary>
+    <div class="table-responsive mt-2"><table class="table table-sm align-middle mb-0"><thead><tr><th>Period</th><th class="text-end">Orders</th><th class="text-end">Paid sales</th></tr></thead><tbody>
+      {% for row in trend %}<tr><td>{{ row.period }}</td><td class="text-end">{{ row.orders_count }}</td><td class="text-end">₱{{ '%.2f'|format(row.sales) }}</td></tr>{% endfor %}
+    </tbody></table></div>
+  </details>
+  {% else %}
+  <div class="empty-state compact"><p class="mb-0">No orders in this date range.</p></div>
+  {% endif %}
+</section>
+
+<div class="row g-4 mb-4">
+  <div class="col-xl-7">
+    <section class="panel p-4 h-100">
+      <div class="panel-heading"><div><p class="eyebrow mb-1">COMPLETED ORDERS</p><h2 class="h5 fw-bold mb-0">Popular bouquets</h2></div></div>
+      {% if best %}
+      <div class="chart-wrap"><canvas id="bestChart" aria-label="Product quantities from delivered or picked-up orders"></canvas></div>
+      <div class="table-responsive mt-3"><table class="table table-sm align-middle mb-0"><thead><tr><th>Product</th><th class="text-end">Units completed</th><th class="text-end">Item sales</th></tr></thead><tbody>
+        {% for item in best %}<tr><td>{{ item.item_name }}</td><td class="text-end">{{ item.quantity }}</td><td class="text-end">₱{{ '%.2f'|format(item.revenue) }}</td></tr>{% endfor %}
+      </tbody></table></div>
+      {% else %}<div class="empty-state compact"><p class="mb-0">Completed bouquet sales will appear here.</p></div>{% endif %}
+    </section>
+  </div>
+  <div class="col-xl-5">
+    <section class="panel p-4 h-100">
+      <div class="panel-heading"><div><p class="eyebrow mb-1">PRODUCT PREFERENCES</p><h2 class="h5 fw-bold mb-0">Colors of completed bouquets</h2></div></div>
+      {% if colors %}<div class="chart-wrap"><canvas id="colorChart" aria-label="Completed bouquet quantities by color"></canvas></div>
+      <div class="chart-fallback" data-chart-fallback hidden>Color chart unavailable. Open the data table below.</div>
+      <details class="analytics-data-details mt-3"><summary>View color breakdown</summary><div class="table-responsive mt-2"><table class="table table-sm mb-0"><thead><tr><th>Color</th><th class="text-end">Units completed</th></tr></thead><tbody>{% for row in colors %}<tr><td>{{ row.color }}</td><td class="text-end">{{ row.quantity }}</td></tr>{% endfor %}</tbody></table></div></details>
+      {% else %}<div class="empty-state compact"><p class="mb-0">Completed bouquet color data will appear here.</p></div>{% endif %}
+    </section>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <section class="panel p-4 h-100">
+      <div class="panel-heading"><div><p class="eyebrow mb-1">CUSTOM ORDERS</p><h2 class="h5 fw-bold mb-0">Popular custom flowers</h2></div></div>
+      {% if custom_flowers %}<div class="chart-wrap"><canvas id="customFlowerChart" aria-label="Completed custom bouquet quantities by flower"></canvas></div>
+      <div class="chart-fallback" data-chart-fallback hidden>Custom flower chart unavailable. Open the data table below.</div>
+      <details class="analytics-data-details mt-3"><summary>View custom flower quantities</summary><div class="table-responsive mt-2"><table class="table table-sm mb-0"><thead><tr><th>Flower type</th><th class="text-end">Units completed</th></tr></thead><tbody>{% for row in custom_flowers %}<tr><td>{{ row.flower_type }}</td><td class="text-end">{{ row.quantity }}</td></tr>{% endfor %}</tbody></table></div></details>
+      {% else %}<div class="empty-state compact"><p class="mb-0">Completed custom bouquet requests will appear here.</p></div>{% endif %}
+    </section>
+  </div>
+  <div class="col-lg-6">
+    <section class="panel p-4 h-100">
+      <div class="panel-heading"><div><p class="eyebrow mb-1">CUSTOMER FEEDBACK</p><h2 class="h5 fw-bold mb-0">Product ratings</h2></div></div>
+      <div class="d-flex align-items-center gap-3 py-3">
+        <div class="display-6 fw-bold">{{ '%.1f'|format(ratings.avg_rating) }}</div>
+        <div><div class="text-warning" aria-label="{{ '%.1f'|format(ratings.avg_rating) }} out of 5 stars">★ {{ '%.1f'|format(ratings.avg_rating) }} / 5</div><div class="small text-secondary">{{ ratings.total }} product reviews in this date range</div></div>
+      </div>
+      <a href="{{ url_for('admin_feedback') }}" class="btn btn-outline-pink btn-sm">View customer feedback</a>
+    </section>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <section class="panel p-4 h-100">
+      <div class="panel-heading"><div><p class="eyebrow mb-1">CUSTOMER LOYALTY</p><h2 class="h5 fw-bold mb-0">Repeat customers</h2></div></div>
+      {% if repeat_customers %}<div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>Customer</th><th class="text-end">Orders</th></tr></thead><tbody>{% for customer in repeat_customers %}<tr><td>{{ customer.full_name }}<div class="small text-secondary">{{ customer.email }}</div></td><td class="text-end">{{ customer.orders_count }}</td></tr>{% endfor %}</tbody></table></div>
+      {% else %}<div class="empty-state compact"><p class="mb-0">Customers with multiple live orders will appear here.</p></div>{% endif %}
+    </section>
+  </div>
+  <div class="col-lg-6">
+    <section class="panel p-4 h-100">
+      <div class="panel-heading"><div><p class="eyebrow mb-1">OPERATIONS</p><h2 class="h5 fw-bold mb-0">Peak order hours</h2></div></div>
+      {% if peak_hours %}<div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>Hour (local server time)</th><th class="text-end">Orders</th></tr></thead><tbody>{% for row in peak_hours %}<tr><td>{{ '%02d:00'|format(row.hour) }}–{{ '%02d:00'|format((row.hour + 1) % 24) }}</td><td class="text-end">{{ row.orders_count }}</td></tr>{% endfor %}</tbody></table></div>
+      {% else %}<div class="empty-state compact"><p class="mb-0">Order-time patterns will appear here after live orders.</p></div>{% endif %}
+    </section>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <section class="panel p-4 h-100">
+      <div class="panel-heading"><div><p class="eyebrow mb-1">FULFILLMENT</p><h2 class="h5 fw-bold mb-0">Order status counts</h2></div></div>
+      {% if statuses %}
+      <div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Order type</th><th>Status</th><th class="text-end">Orders</th></tr></thead><tbody>
+        {% for row in statuses %}<tr><td>{{ row.order_type }}</td><td>{{ row.status }}</td><td class="text-end">{{ row.count }}</td></tr>{% endfor %}
+      </tbody></table></div>
+      {% else %}<div class="empty-state compact"><p class="mb-0">No orders in this date range.</p></div>{% endif %}
+    </section>
+  </div>
+  <div class="col-lg-5">
+    <section class="panel p-4 h-100">
+      <div class="panel-heading"><div><p class="eyebrow mb-1">PAYMENTS</p><h2 class="h5 fw-bold mb-0">Payment method and status</h2></div></div>
+      {% if payments %}
+      <div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Method / status</th><th class="text-end">Orders</th><th class="text-end">Order total</th><th class="text-end">Paid</th></tr></thead><tbody>
+        {% for row in payments %}<tr><td>{{ row.payment_method }}<div class="small text-secondary">{{ row.payment_status }}</div></td><td class="text-end">{{ row.count }}</td><td class="text-end">₱{{ '%.2f'|format(row.amount) }}</td><td class="text-end">₱{{ '%.2f'|format(row.sales) }}</td></tr>{% endfor %}
+      </tbody></table></div>
+      {% else %}<div class="empty-state compact"><p class="mb-0">No bouquet payments in this date range.</p></div>{% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/admin.js', v='20261110-orders') }}" defer></script>
+<script>
+document.querySelectorAll('[data-confirm-message]').forEach((form) => {
+  form.addEventListener('submit', (event) => {
+    if (!window.confirm(form.dataset.confirmMessage)) event.preventDefault();
+  });
+});
+
+const summaryWidget = document.querySelector('[data-analytics-summary]');
+if (summaryWidget) {
+  const summaryToggle = summaryWidget.querySelector('[data-summary-toggle]');
+  const summaryPanel = summaryWidget.querySelector('#analyticsSummaryPanel');
+  const summaryClose = summaryWidget.querySelector('[data-summary-close]');
+  const setSummaryOpen = (isOpen) => {
+    summaryPanel.hidden = !isOpen;
+    summaryToggle.setAttribute('aria-expanded', String(isOpen));
+    if (isOpen) summaryClose.focus();
+  };
+
+  summaryToggle.addEventListener('click', () => {
+    setSummaryOpen(summaryPanel.hidden);
+  });
+  summaryClose.addEventListener('click', () => {
+    setSummaryOpen(false);
+    summaryToggle.focus();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !summaryPanel.hidden) {
+      setSummaryOpen(false);
+      summaryToggle.focus();
+    }
+  });
+  document.addEventListener('click', (event) => {
+    if (!summaryPanel.hidden && !summaryWidget.contains(event.target)) {
+      setSummaryOpen(false);
+    }
+  });
+  summaryPanel.querySelectorAll('a[href^="#"]').forEach((link) => {
+    link.addEventListener('click', () => {
+      setSummaryOpen(false);
+      summaryToggle.focus();
+    });
+  });
+}
+
+const chartColors = ['#e94375', '#f78eaa', '#f8b2c3', '#f7cdd8', '#b39ddb', '#81c7b8', '#f4c36a', '#8bb7e0'];
+{% if trend %}
+new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: {
+    labels: {{ trend|map(attribute='period')|list|tojson }},
+    datasets: [
+      { label: 'Paid sales (PHP)', data: {{ trend|map(attribute='sales')|list|tojson }}, borderColor: '#e94375', backgroundColor: 'rgba(233,67,117,.12)', yAxisID: 'sales', tension: .25 },
+      { label: 'Orders', data: {{ trend|map(attribute='orders_count')|list|tojson }}, borderColor: '#4386d7', backgroundColor: 'rgba(67,134,215,.1)', yAxisID: 'orders', tension: .25 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+    scales: { sales: { beginAtZero: true, position: 'left', title: { display: true, text: 'PHP' } },
+      orders: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { precision: 0 } } } }
+});
+{% endif %}
+{% if best %}
+new Chart(document.getElementById('bestChart'), {
+  type: 'bar',
+  data: { labels: {{ best|map(attribute='item_name')|list|tojson }},
+    datasets: [{ label: 'Units sold', data: {{ best|map(attribute='quantity')|list|tojson }},
+      backgroundColor: chartColors, borderRadius: 7 }] },
+  options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } }
+});
+{% endif %}
+{% if colors %}
+new Chart(document.getElementById('colorChart'), {
+  type: 'doughnut',
+  data: { labels: {{ colors|map(attribute='color')|list|tojson }},
+    datasets: [{ data: {{ colors|map(attribute='quantity')|list|tojson }}, backgroundColor: chartColors }] },
+  options: { responsive: true, maintainAspectRatio: false }
+});
+{% endif %}
+{% if custom_flowers %}
+new Chart(document.getElementById('customFlowerChart'), {
+  type: 'doughnut',
+  data: { labels: {{ custom_flowers|map(attribute='flower_type')|list|tojson }},
+    datasets: [{ data: {{ custom_flowers|map(attribute='quantity')|list|tojson }}, backgroundColor: chartColors }] },
+  options: { responsive: true, maintainAspectRatio: false }
+});
+{% endif %}
+</script>
+{% endblock %}

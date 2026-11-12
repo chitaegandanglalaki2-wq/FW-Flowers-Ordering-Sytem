@@ -1,0 +1,286 @@
+{% extends 'base.html' %}
+{% block title %}Checkout{% endblock %}
+{% block content %}
+<p class="eyebrow mb-1">ALMOST THERE</p>
+<h1 class="h2 fw-bold mb-4">Checkout</h1>
+<div class="row g-4">
+  <div class="col-lg-7">
+    <form method="post" action="{{ url_for('checkout', buy_now=1) if is_buy_now else url_for('checkout', selected=1) if is_selected_checkout else url_for('checkout') }}" class="panel p-4 checkout-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      {% if is_buy_now %}
+      <div class="alert alert-info">Buy now checkout: this order includes only the bouquet you selected. Your regular cart stays saved.</div>
+      {% elif is_selected_checkout %}
+      <div class="alert alert-info">Only the items you selected from your cart will be checked out. Other cart items will stay in your cart.</div>
+      {% endif %}
+      <h2 class="h5 fw-bold mb-3">Order fulfillment</h2>
+      <fieldset class="mb-4">
+        <legend class="form-label">How would you like to receive your order?</legend>
+        <div class="payment-options">
+          <label class="payment-option">
+            <input class="form-check-input" type="radio" name="fulfillment_method" value="Delivery" checked>
+            <span><strong>Delivery</strong><small>We'll deliver your order to your address.</small></span>
+          </label>
+          <label class="payment-option">
+            <input class="form-check-input" type="radio" name="fulfillment_method" value="Pickup">
+            <span><strong>Pick up at the shop</strong><small>{{ shop_location.shop_name }} · {{ shop_location.address }} · <a href="{{ url_for('shop_location') }}">View map</a></small></span>
+          </label>
+        </div>
+      </fieldset>
+      <label class="form-label" for="customerName">Recipient full name</label>
+      <input class="form-control mb-3" id="customerName" name="customer_name" maxlength="120" autocomplete="name" value="{{ profile.full_name or '' }}" required>
+      <label class="form-label" for="phone">Contact number</label>
+      <input class="form-control mb-3" id="phone" name="phone" type="tel" maxlength="30" autocomplete="tel" value="{{ profile.phone or '' }}" required>
+      <div data-delivery-fields>
+        <h3 class="h6 fw-bold mb-2">Delivery address</h3>
+        {% include '_delivery_location_selector.html' %}
+        {% if has_usable_saved_address %}
+        <fieldset class="panel p-3 mb-3" data-saved-address-card>
+          <legend class="form-label fw-semibold mb-2">Choose where to deliver this order</legend>
+          <label class="checkout-address-choice">
+            <input class="form-check-input" type="radio" name="delivery_address_choice"
+                   value="saved" data-address-choice-toggle checked>
+            <span><strong>Use saved profile address</strong><small>{{ profile.delivery_address }}</small></span>
+          </label>
+          <label class="checkout-address-choice mt-2">
+            <input class="form-check-input" type="radio" name="delivery_address_choice"
+                   value="new" data-address-choice-toggle>
+            <span><strong>Use a different address for this order</strong><small>This will not change your saved profile address.</small></span>
+          </label>
+        </fieldset>
+        {% endif %}
+        {% if profile.delivery_address and not has_usable_saved_address %}
+        <p class="small text-warning">Saved address is outside the covered delivery towns (Cavinti, Lumban, Kalayaan, Pagsanjan, Santa Cruz, Pila). Enter a covered address or choose pickup.</p>
+        {% endif %}
+        <div {% if has_usable_saved_address %}hidden{% endif %} data-order-address-fields>
+        {% set address_values = profile if has_usable_saved_address else {} %}
+        {% set address_required = true %}
+        {% set address_disabled = has_usable_saved_address %}
+        {% set address_prefix = 'checkoutAddress' %}
+        {% set address_allowed_province_code = laguna_province_code %}
+        {% set address_allowed_city_codes = allowed_delivery_city_codes_csv %}
+        {% include '_philippine_address_fields.html' %}
+        </div>
+        <label class="form-check small mb-2">
+          <input class="form-check-input" id="manualDistanceOverride" name="use_manual_distance" type="checkbox">
+          <span class="form-check-label">Enter a manual distance instead of using the map estimate (optional).</span>
+        </label>
+        <label class="form-label" for="deliveryDistance">Manual distance override (km)</label>
+        <div class="input-group mb-2">
+          <input class="form-control" id="deliveryDistance" name="delivery_distance_km" type="number" inputmode="decimal" min="0.1" max="{{ delivery_distance_max_km }}" step="0.1" placeholder="Optional manual distance" disabled>
+          <span class="input-group-text">km</span>
+        </div>
+        <p class="small text-secondary">Delivery is available exclusively in Cavinti (free), Lumban, Kalayaan, Pagsanjan, Santa Cruz, and Pila (₱{{ '%.2f'|format(outside_local_delivery_fee) }}). If the map cannot estimate your distance, you can still place your order using this address.</p>
+        <label class="form-label" for="deliveryNotes">Delivery notes <span class="text-secondary">(optional)</span></label>
+        <textarea class="form-control mb-4" id="deliveryNotes" name="delivery_notes" maxlength="2000" rows="2" placeholder="Landmark or instructions for the rider"></textarea>
+      </div>
+      <div class="alert alert-info mb-4" data-pickup-details hidden>
+        <strong>Shop for Pick-up:</strong> {{ shop_location.shop_name }}<br>
+        {{ shop_location.address }} · <a href="{{ url_for('shop_location') }}">View map</a><br>
+        No delivery fee will be charged. Please wait for your order to be confirmed before picking it up.
+      </div>
+
+      <label class="form-label" for="giftMessage">Gift message <span class="text-secondary">(optional)</span></label>
+      <textarea class="form-control mb-4" id="giftMessage" name="gift_message" maxlength="500" rows="3" placeholder="Add a message to include with the bouquet"></textarea>
+
+      <label class="form-label" for="promoCode">Promo code <span class="text-secondary">(optional)</span></label>
+      <div class="input-group mb-1"><input class="form-control" id="promoCode" name="promo_code" value="{{ promo_code }}" maxlength="40" autocomplete="off" placeholder="Enter voucher code"><button class="btn btn-outline-pink" type="button" id="applyPromoCode">Apply</button></div>
+      <p class="small text-secondary mb-4" id="promoStatus" aria-live="polite">The server checks the code, expiry, usage limit, and minimum order before applying any discount.</p>
+
+      <label class="form-label" for="deliverySlot">Schedule <span class="text-secondary">(optional)</span></label>
+      <select class="form-select mb-1" id="deliverySlot" name="delivery_slot_id">
+        <option value="">Deliver anytime / No preferred time</option>
+        <option value="Weekdays">Weekdays</option>
+        <option value="Weekends">Weekends</option>
+        {% for slot in delivery_slots %}<option value="{{ slot.id }}" data-method="{{ slot.fulfillment_method }}">{{ slot.fulfillment_method }} — {{ slot.starts_at.strftime('%b %d, %Y %I:%M %p') }} ({{ slot.remaining }} spots)</option>{% endfor %}
+      </select>
+      <p class="small text-secondary mb-4">Orders can be delivered anytime, or you can select weekdays/weekends as preferred.</p>
+
+      <h2 class="h5 fw-bold mb-3">Payment method</h2>
+      <div class="payment-options mb-3">
+        <label class="payment-option">
+          <input class="form-check-input" type="radio" name="payment_method" value="Cash" checked>
+          <span><strong data-cash-payment-title>Cash on Delivery</strong><small data-cash-payment-description>Pay the rider when your order arrives.</small></span>
+        </label>
+        <label class="payment-option">
+          <input class="form-check-input" type="radio" name="payment_method" value="GCash">
+          <span><strong>GCash + payment proof</strong><small>Pay using the shop's GCash number, then upload your receipt for admin verification.</small></span>
+        </label>
+      </div>
+      <section class="gcash-payment-instructions panel p-3 mb-3" data-gcash-instructions hidden aria-labelledby="gcashCheckoutTitle">
+        <h3 class="h6 fw-bold" id="gcashCheckoutTitle">Pay to the shop's GCash account</h3>
+        <p class="mb-1"><strong>GCash name:</strong> {{ gcash.name }}</p>
+        <p class="mb-2"><strong>GCash number:</strong> <span id="checkoutGcashNumber" data-gcash-number>{{ gcash.number }}</span>
+          <button class="btn btn-sm btn-outline-pink ms-2" type="button" data-copy-to="checkoutGcashNumber">Copy number</button>
+          <span class="small ms-2" data-copy-status aria-live="polite"></span>
+        </p>
+        {% include '_gcash_qr.html' %}
+        <p class="mb-0"><strong>Amount to pay:</strong> <span id="gcashAmountToPay" aria-live="polite">Update the order total above</span></p>
+        <p class="small text-secondary mt-2 mb-0">After placing your order, upload the GCash receipt from its details page. Payment remains pending until verified by an admin.</p>
+      </section>
+      <button class="btn btn-pink btn-lg w-100 mt-2">Place order</button>
+    </form>
+  </div>
+  <div class="col-lg-5">
+    <aside class="panel p-4 checkout-summary">
+      <h2 class="h5 fw-bold mb-3">Order summary</h2>
+      <div class="d-flex justify-content-between py-2"><span>Flowers subtotal</span><strong id="flowersSubtotal" data-subtotal="{{ '%.2f'|format(cart_subtotal) }}">₱{{ '%.2f'|format(cart_subtotal) }}</strong></div>
+      <div class="d-flex justify-content-between align-items-start gap-3 py-2 border-top">
+        <span id="fulfillmentFeeLabel">Delivery fee</span>
+        <strong class="text-end" id="deliveryFee"
+                data-local-city-code="{{ local_delivery_city_code }}"
+                data-outside-fee="{{ '%.2f'|format(outside_local_delivery_fee) }}"
+                data-profile-city-code="{{ profile.delivery_city_code or '' }}"
+                data-profile-is-cavinti="{{ 'true' if profile_is_cavinti else 'false' }}">Select city</strong>
+      </div>
+      <p class="small text-secondary" id="fulfillmentFeeHelp">Free within Cavinti, Laguna; ₱{{ '%.2f'|format(outside_local_delivery_fee) }} in other Laguna municipalities.</p>
+      <div class="d-flex justify-content-between py-2 border-top" id="promoDiscountRow" hidden><span>Promo discount</span><strong id="promoDiscountAmount">−₱0.00</strong></div>
+      <div class="d-flex justify-content-between py-3 border-top"><strong>Total</strong><strong class="price fs-5" id="orderTotal">₱{{ '%.2f'|format(cart_subtotal) }} + delivery</strong></div>
+      <div class="summary-delivery-note"><span aria-hidden="true">➜</span><span id="fulfillmentSummaryNote">We'll deliver to the address you provide.</span></div>
+    </aside>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const distanceInput = document.getElementById('deliveryDistance');
+const feeDisplay = document.getElementById('deliveryFee');
+const totalDisplay = document.getElementById('orderTotal');
+const subtotal = Number(document.getElementById('flowersSubtotal').dataset.subtotal);
+const deliveryFields = document.querySelector('[data-delivery-fields]');
+const pickupDetails = document.querySelector('[data-pickup-details]');
+const fulfillmentFeeLabel = document.getElementById('fulfillmentFeeLabel');
+const fulfillmentFeeHelp = document.getElementById('fulfillmentFeeHelp');
+const fulfillmentSummaryNote = document.getElementById('fulfillmentSummaryNote');
+const promoCode = document.getElementById('promoCode');
+const promoStatus = document.getElementById('promoStatus');
+const promoButton = document.getElementById('applyPromoCode');
+const promoDiscountRow = document.getElementById('promoDiscountRow');
+const promoDiscountAmount = document.getElementById('promoDiscountAmount');
+const promoPreviewUrl = '{{ url_for("voucher_preview") }}';
+const checkoutMode = '{{ "buy_now" if is_buy_now else "selected" if is_selected_checkout else "cart" }}';
+let promoDiscount = 0;
+const cashPaymentTitle = document.querySelector('[data-cash-payment-title]');
+const cashPaymentDescription = document.querySelector('[data-cash-payment-description]');
+const fulfillmentOptions = document.querySelectorAll('input[name="fulfillment_method"]');
+const paymentOptions = document.querySelectorAll('input[name="payment_method"]');
+const gcashInstructions = document.querySelector('[data-gcash-instructions]');
+const gcashAmountToPay = document.getElementById('gcashAmountToPay');
+const updateGcashAmount = () => {
+  if (!gcashAmountToPay) return;
+  gcashAmountToPay.textContent = totalDisplay.textContent;
+};
+const addressChoiceToggles = document.querySelectorAll('[data-address-choice-toggle]');
+const deliverySlot = document.getElementById('deliverySlot');
+const manualDistanceOverride = document.getElementById('manualDistanceOverride');
+const deliveryCitySelect = deliveryFields.querySelector('[data-ph-city]');
+
+const updateCheckoutSummary = () => {
+  const isPickup = document.querySelector('input[name="fulfillment_method"]:checked').value === 'Pickup';
+  const fulfillmentMethod = isPickup ? 'Pickup' : 'Delivery';
+  const isGcash = document.querySelector('input[name="payment_method"]:checked').value === 'GCash';
+  gcashInstructions.hidden = !isGcash;
+  Array.from(deliverySlot.options).forEach((option) => {
+    option.disabled = Boolean(option.dataset.method && option.dataset.method !== fulfillmentMethod);
+  });
+  if (deliverySlot.selectedOptions[0]?.disabled) deliverySlot.value = '';
+  const selectedAddressChoice = document.querySelector('[data-address-choice-toggle]:checked');
+  const isUsingDifferentAddress = !addressChoiceToggles.length
+    || Boolean(selectedAddressChoice && selectedAddressChoice.value === 'new');
+  deliveryFields.hidden = isPickup;
+  pickupDetails.hidden = !isPickup;
+  distanceInput.disabled = isPickup || !manualDistanceOverride.checked;
+  distanceInput.required = !isPickup && manualDistanceOverride.checked;
+  deliveryFields.querySelectorAll('[data-ph-region], [data-ph-province], [data-ph-city], [data-ph-barangay], input[name="delivery_street_address"]').forEach((field) => {
+    field.required = !isPickup && isUsingDifferentAddress;
+  });
+  const manualBarangay = deliveryFields.querySelector('[data-ph-barangay-manual]');
+  manualBarangay.required = !isPickup && isUsingDifferentAddress && !manualBarangay.hidden;
+  const otherPostal = deliveryFields.querySelector('[data-ph-postal-other]');
+  otherPostal.required = false;
+  fulfillmentFeeLabel.textContent = isPickup ? 'Pickup fee' : 'Delivery fee';
+  fulfillmentFeeHelp.textContent = isPickup
+    ? 'Pick up your order at the shop at no extra charge.'
+    : `Free within Cavinti, Laguna; ₱${Number(feeDisplay.dataset.outsideFee).toFixed(2)} in other Laguna municipalities.`;
+  fulfillmentSummaryNote.textContent = isPickup
+    ? 'Your order will be ready for pickup at the shop after confirmation.'
+    : "We'll deliver to the address you provide.";
+  cashPaymentTitle.textContent = isPickup ? 'Cash on pickup' : 'Cash on Delivery';
+  cashPaymentDescription.textContent = isPickup
+    ? 'Pay at the shop when you pick up your order.'
+    : 'Pay the rider when your order arrives.';
+
+  if (isPickup) {
+    feeDisplay.textContent = 'Free';
+    totalDisplay.textContent = `₱${Math.max(0, subtotal - promoDiscount).toFixed(2)}`;
+    updateGcashAmount();
+    promoDiscountRow.hidden = promoDiscount <= 0;
+    promoDiscountAmount.textContent = `−₱${promoDiscount.toFixed(2)}`;
+    return;
+  }
+  const isUsingSavedAddress = Boolean(
+    selectedAddressChoice && selectedAddressChoice.value === 'saved'
+  );
+  const cityCode = isUsingSavedAddress
+    ? feeDisplay.dataset.profileCityCode
+    : deliveryCitySelect.value;
+  const hasSavedAddressCity = isUsingSavedAddress && feeDisplay.dataset.profileIsCavinti === 'true';
+  if (!cityCode && !hasSavedAddressCity && isUsingDifferentAddress) {
+    feeDisplay.textContent = 'Select city';
+    totalDisplay.textContent = `₱${Math.max(0, subtotal - promoDiscount).toFixed(2)} + delivery`;
+    updateGcashAmount();
+    promoDiscountRow.hidden = promoDiscount <= 0;
+    promoDiscountAmount.textContent = `−₱${promoDiscount.toFixed(2)}`;
+    return;
+  }
+  const isCavinti = hasSavedAddressCity || cityCode === feeDisplay.dataset.localCityCode;
+  const fee = isCavinti ? 0 : Number(feeDisplay.dataset.outsideFee);
+  feeDisplay.textContent = `₱${fee.toFixed(2)}`;
+  totalDisplay.textContent = `₱${Math.max(0, subtotal + fee - promoDiscount).toFixed(2)}`;
+  updateGcashAmount();
+  promoDiscountRow.hidden = promoDiscount <= 0;
+  promoDiscountAmount.textContent = `−₱${promoDiscount.toFixed(2)}`;
+};
+
+promoButton.addEventListener('click', async () => {
+  const code = promoCode.value.trim();
+  if (!code) {
+    promoDiscount = 0;
+    promoStatus.textContent = 'Enter a promo code to apply it.';
+    promoStatus.className = 'small text-warning mb-4';
+    updateCheckoutSummary();
+    return;
+  }
+  promoButton.disabled = true;
+  promoStatus.textContent = 'Checking promo code…';
+  try {
+    const params = new URLSearchParams({code, mode: checkoutMode});
+    const response = await fetch(`${promoPreviewUrl}?${params}`, {headers: {'Accept': 'application/json'}});
+    const result = await response.json();
+    if (!response.ok || !result.valid) throw new Error(result.message || 'Promo code could not be applied.');
+    promoDiscount = Number(result.discount);
+    promoStatus.textContent = result.message;
+    promoStatus.className = 'small text-success mb-4';
+  } catch (error) {
+    promoDiscount = 0;
+    promoStatus.textContent = error.message || 'Could not verify promo code. Try again.';
+    promoStatus.className = 'small text-danger mb-4';
+  } finally {
+    promoButton.disabled = false;
+    updateCheckoutSummary();
+  }
+});
+promoCode.addEventListener('input', () => {
+  promoDiscount = 0;
+  updateCheckoutSummary();
+});
+distanceInput.addEventListener('input', updateCheckoutSummary);
+deliveryFields.querySelectorAll('[data-ph-region], [data-ph-province], [data-ph-city]').forEach((field) => {
+  field.addEventListener('change', updateCheckoutSummary);
+});
+manualDistanceOverride.addEventListener('change', updateCheckoutSummary);
+fulfillmentOptions.forEach((option) => option.addEventListener('change', updateCheckoutSummary));
+paymentOptions.forEach((option) => option.addEventListener('change', updateCheckoutSummary));
+addressChoiceToggles.forEach((option) => option.addEventListener('change', updateCheckoutSummary));
+updateCheckoutSummary();
+</script>
+{% endblock %}

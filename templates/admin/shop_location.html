@@ -1,0 +1,78 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Shop Location{% endblock %}
+{% block admin_content %}
+<div class="admin-page-heading">
+  <div>
+    <p class="eyebrow mb-1">SHOP SETTINGS</p>
+    <h1 class="h2 fw-bold mb-1">Shop location</h1>
+    <p class="text-secondary mb-0">These details appear on customer pickup maps and order pages.</p>
+  </div>
+</div>
+<section class="panel p-3 p-md-4" aria-labelledby="shopLocationTitle">
+  <div class="mb-4">
+    <h2 class="h5 fw-bold mb-1" id="shopLocationTitle">Shop address</h2>
+    <p class="text-secondary mb-0">Enter the address where customers should pick up their order. The map uses this address to find the shop.</p>
+  </div>
+  <form method="post" novalidate>
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label fw-semibold" for="shopProvince">Province</label>
+        <select class="form-select" id="shopProvince" name="province_code" required>
+          <option value="{{ shop_location.province_code }}" selected>{{ shop_location.province }}</option>
+        </select>
+        <div class="form-text">The shop and delivery service are limited to Laguna.</div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label fw-semibold" for="shopMunicipality">Municipality / City</label>
+        <select class="form-select" id="shopMunicipality" name="municipality_code" required>
+          <option value="">Choose municipality</option>
+          {% for city in cities %}
+          <option value="{{ city.code }}"{% if city.code == shop_location.municipality_code %} selected{% endif %}>{{ city.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label fw-semibold" for="shopBarangay">Barangay</label>
+        <select class="form-select" id="shopBarangay" name="barangay"
+                data-barangays-url="{{ url_for('philippines_barangays', city_code='CITY_CODE') }}"
+                required>
+          <option value="">Choose barangay</option>
+          {% for barangay in barangays %}
+          <option value="{{ barangay.name }}"{% if barangay.name|lower == shop_location.barangay|lower %} selected{% endif %}>{{ barangay.name }}</option>
+          {% endfor %}
+        </select>
+        <div class="form-text" id="shopBarangayMessage" role="status" aria-live="polite"></div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label fw-semibold" for="shopName">Shop name</label>
+        <input class="form-control" id="shopName" name="shop_name" maxlength="120"
+               value="{{ shop_location.shop_name }}" autocomplete="organization" required>
+      </div>
+      <div class="col-12">
+        <label class="form-label fw-semibold" for="shopAddress">Complete shop address</label>
+        <textarea class="form-control" id="shopAddress" name="complete_address"
+                  maxlength="255" rows="3" autocomplete="street-address"
+                  placeholder="House or unit, street, subdivision, or nearby landmark"
+                  required>{{ shop_location.complete_address }}</textarea>
+        <div class="form-text">Enter the street, unit, subdivision, or landmark. Barangay and municipality are added automatically for the map.</div>
+      </div>
+    </div>
+    <div class="mt-4">
+      <h3 class="h6 fw-bold mb-1">Shop map pin</h3>
+      <p class="small text-secondary mb-2">The map loads your address. Drag the marker to the exact shop entrance, then save. No coordinates to type.</p>
+      <div class="shop-location-map-canvas" id="shopLocationMap"
+           data-location-url="{{ url_for('shop_location_data') }}"
+           data-preview-url="{{ url_for('admin_shop_location_preview') }}"
+           aria-label="Map showing the draggable shop pickup marker"></div>
+      <p class="form-text mt-2 mb-0" id="shopLocationMapMessage" role="status" aria-live="polite">
+        Loading your shop location…
+      </p>
+    </div>
+    <input type="hidden" name="map_latitude" id="shopMapLatitude">
+    <input type="hidden" name="map_longitude" id="shopMapLongitude">
+    <input type="hidden" name="map_approximate" id="shopMapApproximate">
+    <button class="btn btn-pink btn-lg mt-3" type="submit" id="saveShopLocation">Save shop location</button>
+  </form>
+</section>
+{% endblock %}

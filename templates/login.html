@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Login{% endblock %}
+{% block content %}
+<section class="login-layout" aria-label="Log in to FuzzyWire Bouquet">
+  <div class="login-brand-panel">
+    <div class="login-brand-lockup">
+      <img class="login-brand-logo" src="{{ url_for('static', filename='facebook-page.jpg') }}" alt="">
+      <span>FuzzyWire <strong>Bouquet</strong></span>
+    </div>
+    <div class="login-brand-message">
+      <p class="eyebrow mb-2">MADE WITH LOVE, JUST FOR YOU</p>
+      <h1>Let flowers make the moment.</h1>
+      <p class="login-brand-copy">Handcrafted bouquets to brighten someone's day, celebrate the little things, and make every moment bloom.</p>
+      <div class="login-brand-promise"><span aria-hidden="true">✿</span> Find a bouquet for every kind of happy.</div>
+    </div>
+  </div>
+  <div class="login-form-panel">
+    <p class="eyebrow mb-2">WELCOME TO FUZZYWIRE</p>
+    <h2 class="h3 fw-bold mb-2">Welcome back</h2>
+    <p class="text-secondary mb-4">Log in to find something beautiful.</p>
+    <form method="post">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label class="form-label" for="loginEmail">Email</label>
+      <input class="form-control mb-3" id="loginEmail" type="email" name="email" autocomplete="email" required>
+      <label class="form-label" for="loginPassword">Password</label>
+      <div class="password-input-wrap mb-4">
+        <input class="form-control" id="loginPassword" type="password" name="password" autocomplete="current-password" required>
+        <button class="password-visibility-toggle" type="button" data-password-toggle="loginPassword"
+                aria-controls="loginPassword" aria-label="Show password" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true" data-eye-open><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true" data-eye-closed hidden><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.7 10.7 0 0 1 12 5c6.4 0 10 7 10 7a14.8 14.8 0 0 1-3.1 3.8M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7c1 0 2-.2 2.8-.5"/></svg>
+        </button>
+      </div>
+      <div class="text-end mb-3"><a class="small" href="{{ url_for('forgot_password') }}">Forgot password?</a></div>
+      <button class="btn btn-pink btn-lg w-100" type="submit">Log in</button>
+    </form>
+    <p class="small text-secondary text-center mt-4 mb-0">New customer? <a href="{{ url_for('register') }}">Create an account</a></p>
+    <p class="small text-center mt-3 mb-0"><a href="{{ url_for('resend_verification_email') }}">Didn't receive your verification email?</a></p>
+  </div>
+</section>
+{% endblock %}

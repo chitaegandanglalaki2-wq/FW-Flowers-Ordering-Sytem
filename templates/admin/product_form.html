@@ -1,0 +1,79 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}{{ 'Product Details' if product else 'Add Product' }}{% endblock %}
+{% block admin_content %}
+<div class="admin-page-heading">
+  <div>
+    <p class="eyebrow mb-1">PRODUCT INVENTORY</p>
+    <h1 class="h2 fw-bold mb-0">{{ 'Product details' if product else 'Add product' }}</h1>
+  </div>
+  <a class="btn btn-outline-pink" href="{{ url_for('admin_products') }}">Back to products</a>
+</div>
+{% if product %}
+<section class="admin-product-summary panel p-3 p-md-4 mb-3" aria-label="Current product details">
+  <div class="d-flex flex-wrap align-items-center gap-3">
+    {% if product.image_filename %}
+    <img class="tiny-image" src="{{ url_for('static', filename='uploads/'+product.image_filename) }}" alt="">
+    {% else %}
+    <img class="tiny-image" src="{{ url_for('static', filename='bouquet-art.svg') }}" alt="">
+    {% endif %}
+    <div class="flex-grow-1">
+      <h2 class="h5 fw-bold mb-1">{{ product.name }}</h2>
+      <p class="small text-secondary mb-0">{{ product.flower_type }} · {{ product.color }} · {{ product.occasion or 'Any occasion' }}</p>
+    </div>
+    <strong class="fs-5">₱{{ '%.2f'|format(product.price) }}</strong>
+    <span class="badge {{ 'text-bg-success' if product.is_active and product.stock > 0 else 'text-bg-secondary' if not product.is_active else 'text-bg-danger' }}">
+      {{ 'Available' if product.is_active and product.stock > 0 else 'Hidden' if not product.is_active else 'Sold out' }}
+    </span>
+    <span class="badge {{ 'text-bg-danger' if product.stock <= 5 else 'text-bg-success' }}">{{ product.stock }} in stock</span>
+  </div>
+</section>
+{% endif %}
+<form class="panel p-4" method="post" enctype="multipart/form-data">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  {% if product %}<h2 class="h5 fw-bold mb-3">Update product details</h2>{% endif %}
+  <label class="form-label" for="productName">Product name</label>
+  <input class="form-control mb-3" id="productName" name="name" maxlength="120" value="{{ product.name if product else '' }}" required>
+
+  <label class="form-label" for="productDescription">Description</label>
+  <textarea class="form-control mb-3" id="productDescription" name="description" rows="3">{{ product.description if product else '' }}</textarea>
+
+  <div class="row">
+    <div class="col-md-3">
+      <label class="form-label" for="flowerType">Flower type</label>
+      <input class="form-control mb-3" id="flowerType" name="flower_type" maxlength="80" value="{{ product.flower_type if product else '' }}" required>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" for="productColor">Color</label>
+      <input class="form-control mb-3" id="productColor" name="color" maxlength="50" value="{{ product.color if product else '' }}" required>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" for="productOccasion">Occasion</label>
+      <input class="form-control mb-3" id="productOccasion" name="occasion" maxlength="60" value="{{ product.occasion if product else 'Any occasion' }}" placeholder="Birthday, anniversary, etc." required>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" for="productPrice">Price (PHP)</label>
+      <input class="form-control mb-3" id="productPrice" type="number" min="0.01" step="0.01" name="price" value="{{ '%.2f'|format(product.price) if product else '' }}" required>
+    </div>
+  </div>
+
+  <label class="form-label" for="productStock">Stock</label>
+  <input class="form-control mb-3" id="productStock" type="number" min="0" name="stock" value="{{ product.stock if product else 0 }}" required>
+
+  <label class="form-label" for="productImage">Product image{% if product %} (optional — choose a new image to replace the current one){% endif %}</label>
+  <input class="form-control mb-3" id="productImage" type="file" name="image" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp">
+  {% if product and product.image_filename %}
+  <div class="mb-3">
+    <img class="product-edit-preview" src="{{ url_for('static', filename='uploads/'+product.image_filename) }}" alt="Current image for {{ product.name }}">
+  </div>
+  {% endif %}
+
+  <div class="form-check form-switch mb-4">
+    <input class="form-check-input" type="checkbox" role="switch" id="isActive" name="is_active" value="1" {% if not product or product.is_active %}checked{% endif %}>
+    <label class="form-check-label" for="isActive">Available in the customer shop</label>
+    <div class="form-text">Turn this off to hide this bouquet from customers. Stock at zero is shown as sold out.</div>
+  </div>
+
+  <p class="small text-secondary">Update the details customers see in the shop.</p>
+  <button class="btn btn-pink">{{ 'Update product' if product else 'Add product' }}</button>
+</form>
+{% endblock %}

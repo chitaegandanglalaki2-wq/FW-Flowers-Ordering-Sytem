@@ -1,0 +1,40 @@
+<section
+  class="chat-panel"
+  id="chatPanel"
+  data-conversation-id="{{ (conversation_id or '') if current_role == 'customer' else conversation.id }}"
+  data-current-role="{{ current_role }}"
+  data-conversation-url="{{ url_for('chat_api_conversation') if current_role == 'customer' else '' }}"
+  data-messages-url="{{ url_for('chat_api_messages') }}"
+  data-csrf-token="{{ csrf_token() }}">
+  <div class="chat-panel-heading">
+    {% if current_role == 'admin' and conversation.profile_image %}
+    <img class="chat-avatar chat-profile-image" src="{{ url_for('static', filename='uploads/'+conversation.profile_image) }}" alt="{{ conversation.full_name }} profile photo">
+    {% else %}
+    <div class="chat-avatar" aria-hidden="true">{{ '✿' if current_role == 'customer' else conversation.full_name[:1]|upper }}</div>
+    {% endif %}
+    <div>
+      <strong>{{ 'FuzzyWire Support' if current_role == 'customer' else conversation.full_name }}</strong>
+      <small>{{ 'We’re here to help with your flowers and orders.' if current_role == 'customer' else conversation.email }}</small>
+    </div>
+    <span class="chat-online-indicator" title="Messages refresh automatically">●</span>
+    <div class="ms-auto text-end me-2">
+      <small class="chat-live-clock text-secondary" id="chatLiveClock" title="Real-time date &amp; time"></small>
+    </div>
+    {% if is_chat_widget|default(false) %}
+    <button class="chat-widget-close" id="chatWidgetClose" type="button" aria-label="Close chat">×</button>
+    {% endif %}
+  </div>
+  <div class="chat-message-list" id="chatMessages" role="log" aria-label="Chat messages" aria-live="polite">
+    <p class="chat-loading" id="chatStatus">Loading messages…</p>
+  </div>
+  <form class="chat-compose" id="chatForm">
+    <label class="visually-hidden" for="chatMessageInput">Write a message</label>
+    <textarea id="chatMessageInput" name="body" maxlength="2000" rows="2" placeholder="Write a message…" required></textarea>
+    <div class="chat-compose-footer">
+      <span class="chat-compose-hint">Press Enter to send · Shift+Enter for a new line</span>
+      <button class="btn btn-pink" id="chatSendButton" type="submit">
+        <span>Send</span><span aria-hidden="true">↗</span>
+      </button>
+    </div>
+  </form>
+</section>

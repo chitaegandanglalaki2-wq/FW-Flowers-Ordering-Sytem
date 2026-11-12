@@ -1,0 +1,14 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Admin Activity Log{% endblock %}
+{% block admin_content %}
+<div class="admin-page-heading"><div><p class="eyebrow mb-1">RECENT CHANGES</p><h1 class="h2 fw-bold mb-0">Activity</h1><p class="text-secondary mt-2 mb-0">See what admins changed in the store.</p></div></div>
+<div class="panel p-3 p-md-4">
+  <p class="small text-secondary">Showing the latest 200 changes. Private customer details and staff notes are not included.</p>
+  <div class="table-responsive"><table class="table align-middle">
+    <thead><tr><th>When</th><th>Admin</th><th>Action</th><th>Target</th><th>Details</th></tr></thead>
+    <tbody>{% for entry in entries %}
+      <tr><td>{{ entry.created_at }}</td><td>{{ entry.admin_name or 'Former admin' }}</td><td>{{ entry.action }}</td><td>{{ entry.target_type }}{% if entry.target_id %} #{{ entry.target_id }}{% endif %}</td><td>{{ entry.details }}</td></tr>
+    {% else %}<tr><td colspan="5" class="text-secondary">No admin activity has been recorded yet.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% endblock %}

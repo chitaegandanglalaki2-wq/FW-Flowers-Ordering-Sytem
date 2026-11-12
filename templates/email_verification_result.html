@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Verify Email | FuzzyWire Bouquet{% endblock %}
+{% block content %}
+<section class="auth-message-page">
+  <div class="auth-message-card panel">
+    {% if verified %}
+    <span class="auth-message-icon" aria-hidden="true">✓</span>
+    <p class="eyebrow mb-2">EMAIL VERIFIED</p>
+    <h1 class="h3 fw-bold">Your email is verified</h1>
+    <p class="text-secondary">Your email address is confirmed. Your account may still need admin approval before you can sign in.</p>
+    <a class="btn btn-pink btn-lg w-100" href="{{ url_for('login') }}">Continue to customer login</a>
+    {% else %}
+    <span class="auth-message-icon" aria-hidden="true">!</span>
+    <p class="eyebrow mb-2">LINK UNAVAILABLE</p>
+    <h1 class="h3 fw-bold">This verification link cannot be used</h1>
+    <p class="text-secondary">It may have expired or already been used. Request a fresh verification email to continue.</p>
+    <a class="btn btn-pink btn-lg w-100" href="{{ url_for('resend_verification_email') }}">Resend verification email</a>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

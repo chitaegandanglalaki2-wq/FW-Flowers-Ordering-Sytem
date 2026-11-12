@@ -1,0 +1,76 @@
+{% extends 'admin/base_admin.html' %}
+{% from '_payment_status.html' import payment_status_badge %}
+{% block title %}Payments{% endblock %}
+{% block admin_content %}
+<div class="admin-page-heading">
+  <div>
+    <p class="eyebrow mb-1">PAYMENTS</p>
+    <h1 class="h2 fw-bold mb-0">Check GCash payments</h1>
+    <p class="text-secondary mt-2 mb-0">
+      Compare each receipt with the order total before approving.
+      <strong>{{ pending_count }}</strong> need review.
+    </p>
+  </div>
+</div>
+<section class="panel p-3 p-md-4" aria-label="GCash payment proofs">
+  {% if payments %}
+  <div class="row g-3">
+    {% for payment in payments %}
+    {% set proof_url = url_for('payment_proof_file', order_type=payment.order_type, order_id=payment.order_id) %}
+    <article class="col-12">
+      <div class="gcash-review-panel panel p-3 p-md-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+          <div>
+            <p class="eyebrow mb-1">{{ 'CUSTOM BOUQUET' if payment.order_type == 'Custom' else 'ORDER' }}</p>
+            <h2 class="h5 fw-bold mb-1">Order #{{ 'C' if payment.order_type == 'Custom' else '' }}{{ payment.order_id }}</h2>
+            <div>{{ payment.customer_name }} <span class="text-secondary">· {{ payment.customer_email }}</span></div>
+          </div>
+          {{ payment_status_badge(payment.payment_status, 'GCash') }}
+        </div>
+        <div class="row g-3 align-items-start">
+          <div class="col-md-5">
+            <div class="admin-payment-summary mb-3">
+              <div><span>Order total</span><strong>₱{{ '%.2f'|format(payment.amount) }}</strong></div>
+              <div><span>Paid on</span><strong>{{ payment.payment_date }}</strong></div>
+            </div>
+            <a href="{{ proof_url }}" target="_blank" rel="noopener">
+              <img class="payment-proof-review-image" src="{{ proof_url }}" alt="GCash payment receipt for order {{ payment.order_id }}" loading="lazy">
+            </a>
+            <p class="form-text mt-2 mb-0">Open the receipt to zoom in and compare the amount and reference.</p>
+          </div>
+          <div class="col-md-7">
+            <a class="btn btn-sm btn-outline-pink mb-3"
+               href="{{ url_for('admin_order_detail', order_id=payment.order_id) if payment.order_type == 'Order' else url_for('admin_custom_detail', custom_id=payment.order_id) }}">
+              View order details
+            </a>
+            {% if payment.payment_status == 'Pending' %}
+            <p class="small text-secondary">Approve only after the amount and receipt details match.</p>
+            <form method="post" action="{{ url_for('admin_review_payment', order_type=payment.order_type, order_id=payment.order_id, decision='approve') }}" class="mb-3" data-confirm-message="Approve this payment and mark the order Paid?">
+              <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+              <button class="btn btn-success" type="submit">Approve payment</button>
+            </form>
+            <form method="post" action="{{ url_for('admin_review_payment', order_type=payment.order_type, order_id=payment.order_id, decision='reject') }}"
+                  data-confirm-message="Reject this receipt? The customer can upload a corrected one.">
+              <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+              <label class="form-label" for="rejectReason{{ payment.order_type }}{{ payment.order_id }}">Why are you rejecting it?</label>
+              <textarea class="form-control mb-2" id="rejectReason{{ payment.order_type }}{{ payment.order_id }}" name="review_note" rows="2" maxlength="1000" placeholder="Tell the customer what needs fixing" required></textarea>
+              <button class="btn btn-outline-danger" type="submit">Reject receipt</button>
+            </form>
+            {% elif payment.payment_review_note %}
+            <p class="alert alert-info mb-0"><strong>Review note:</strong> {{ payment.payment_review_note }}</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="orders-empty-state">
+    <span aria-hidden="true">✓</span>
+    <h2 class="h5 fw-bold">No GCash receipts to review</h2>
+    <p class="text-secondary mb-0">Payment proofs submitted by customers will appear here.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

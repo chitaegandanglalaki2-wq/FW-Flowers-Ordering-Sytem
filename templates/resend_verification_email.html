@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Resend Verification Email | FuzzyWire Bouquet{% endblock %}
+{% block content %}
+<section class="auth-message-page">
+  <div class="auth-message-card panel">
+    <span class="auth-message-icon" aria-hidden="true">✉</span>
+    <p class="eyebrow mb-2">ACCOUNT VERIFICATION</p>
+    <h1 class="h3 fw-bold">Resend your verification code</h1>
+    <p class="text-secondary">Enter the email address you used to create your account. If it needs verification, we’ll send a fresh six-digit code.</p>
+    <form method="post">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label class="form-label fw-semibold" for="resendVerificationEmail">Email address</label>
+      <input class="form-control form-control-lg mb-3" id="resendVerificationEmail" type="email"
+             name="email" autocomplete="email" maxlength="160" required>
+      <button class="btn btn-pink btn-lg w-100" type="submit">Resend OTP</button>
+    </form>
+    <p class="small text-center mt-4 mb-0"><a href="{{ url_for('login') }}">Return to customer login</a></p>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Account status{% endblock %}
+{% block content %}
+<section class="account-status-page">
+  <div class="account-status-card panel">
+    <span class="auth-message-icon" aria-hidden="true">
+      {% if customer.account_status == 'Rejected' or customer.verification_status == 'Rejected' %}!{% else %}…{% endif %}
+    </span>
+    <p class="eyebrow mb-2">YOUR FUZZYWIRE ACCOUNT</p>
+    <h1 class="h3 fw-bold">Account status</h1>
+    <div class="account-status-badges">
+      <span class="badge rounded-pill text-bg-light">Account: {{ customer.account_status }}</span>
+      <span class="badge rounded-pill text-bg-light">ID review: {{ customer.verification_status }}</span>
+    </div>
+    {% if not customer.email_verified %}
+      <p class="text-secondary mt-3">Verify your email address before continuing.</p>
+      <a class="btn btn-pink" href="{{ url_for('resend_verification_email') }}">Resend verification OTP</a>
+    {% elif customer.account_status == 'Rejected' or customer.verification_status == 'Rejected' %}
+      <div class="alert alert-warning text-start mt-4">
+        <h2 class="h6 fw-bold">Your ID verification needs another look</h2>
+        <p class="mb-1">Reason from the review team:</p>
+        <p class="mb-0">{{ customer.verification_rejection_reason or 'Please provide clear, complete ID images and try again.' }}</p>
+      </div>
+      <form class="verification-resubmit-form text-start mt-4" method="post"
+            action="{{ url_for('customer_verification_resubmit') }}" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <p class="small text-secondary">Upload all three clear photos to resubmit your ID for review.</p>
+        <label class="form-label" for="resubmitIdFront">Valid ID — front</label>
+        <input class="form-control mb-3" id="resubmitIdFront" name="verification_id_front" type="file"
+               accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" required>
+        <label class="form-label" for="resubmitIdBack">Valid ID — back</label>
+        <input class="form-control mb-3" id="resubmitIdBack" name="verification_id_back" type="file"
+               accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" required>
+        <label class="form-label" for="resubmitSelfie">Selfie holding your valid ID</label>
+        <input class="form-control mb-3" id="resubmitSelfie" name="verification_selfie" type="file"
+               accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" required>
+        <div class="form-text mb-3">PNG, JPG, JPEG, or WEBP; each image must be 5 MB or smaller.</div>
+        <button class="btn btn-pink w-100" type="submit">Re-submit ID</button>
+      </form>
+    {% elif customer.account_status == 'Pending' or customer.verification_status == 'Pending' %}
+      <p class="text-secondary mt-3">Your account is pending review. We’ll notify you when the team finishes checking your information.</p>
+    {% elif customer.account_status == 'Deactivated' %}
+      <p class="text-secondary mt-3">This account is deactivated. Contact the shop if you need help.</p>
+    {% else %}
+      <p class="text-secondary mt-3">Your account is active and ready to use.</p>
+      <a class="btn btn-pink" href="{{ url_for('home') }}">Continue to shop</a>
+    {% endif %}
+    <form class="mt-3" method="post" action="{{ url_for('logout') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn btn-outline-secondary w-100" type="submit">Log out</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

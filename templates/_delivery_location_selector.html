@@ -1,0 +1,78 @@
+<section class="delivery-coverage-card panel p-3 p-md-4 mb-3" data-delivery-map-selector aria-labelledby="deliveryCoverageHeading">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <div>
+      <p class="eyebrow mb-1 text-pink">COVERED DELIVERY TOWNS · LAGUNA</p>
+      <h3 class="h6 fw-bold mb-0" id="deliveryCoverageHeading">Delivery Location &amp; Live Service Map</h3>
+    </div>
+    <span class="badge text-bg-success d-inline-flex align-items-center gap-1">
+      <span class="delivery-live-dot" aria-hidden="true"></span> Live Map · 6 Towns Covered
+    </span>
+  </div>
+
+  <p class="small text-secondary mb-3">
+    Delivery is available exclusively within <strong>Cavinti, Lumban, Kalayaan, Pagsanjan, Santa Cruz, and Pila</strong>.
+    Select your municipality below or click directly on the live map:
+  </p>
+
+  <!-- Interactive Quick Town Selection Pills -->
+  <div class="delivery-town-pills d-flex flex-wrap gap-2 mb-3" role="radiogroup" aria-label="Covered municipalities in Laguna">
+    <button type="button" class="btn btn-sm btn-outline-pink delivery-town-pill active"
+            data-town-code="0403407000" data-town-name="Cavinti"
+            data-lat="14.2464" data-lng="121.5074" data-fee="0.00" data-is-local="true">
+      🌸 Cavinti <span class="badge text-bg-success ms-1">Free Delivery</span>
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-pink delivery-town-pill"
+            data-town-code="0403419000" data-town-name="Pagsanjan"
+            data-lat="14.2736" data-lng="121.4528" data-fee="100.00" data-is-local="false">
+      📍 Pagsanjan <span class="badge bg-light text-dark ms-1">₱100</span>
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-pink delivery-town-pill"
+            data-town-code="0403413000" data-town-name="Lumban"
+            data-lat="14.2981" data-lng="121.4589" data-fee="100.00" data-is-local="false">
+      📍 Lumban <span class="badge bg-light text-dark ms-1">₱100</span>
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-pink delivery-town-pill"
+            data-town-code="0403409000" data-town-name="Kalayaan"
+            data-lat="14.3547" data-lng="121.5583" data-fee="100.00" data-is-local="false">
+      📍 Kalayaan <span class="badge bg-light text-dark ms-1">₱100</span>
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-pink delivery-town-pill"
+            data-town-code="0403426000" data-town-name="Santa Cruz"
+            data-lat="14.2789" data-lng="121.4156" data-fee="100.00" data-is-local="false">
+      📍 Santa Cruz <span class="badge bg-light text-dark ms-1">₱100</span>
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-pink delivery-town-pill"
+            data-town-code="0403422000" data-town-name="Pila"
+            data-lat="14.2344" data-lng="121.3642" data-fee="100.00" data-is-local="false">
+      📍 Pila <span class="badge bg-light text-dark ms-1">₱100</span>
+    </button>
+  </div>
+
+  <!-- Interactive Live Map Canvas -->
+  <div class="delivery-selection-map-wrap position-relative">
+    <div class="delivery-selection-map-canvas" id="deliverySelectionMap"
+         data-shop-lat="{{ shop_location.latitude|default('14.2464') }}" data-shop-lng="{{ shop_location.longitude|default('121.5074') }}"
+         data-shop-name="{{ shop_location.shop_name|default('FuzzyWire Bouquet') }}"
+         data-shop-address="{{ shop_location.address|default('Cavinti, Laguna') }}"
+         style="height: 300px; width: 100%; border-radius: 14px; overflow: hidden; border: 1px solid #f1ceda;"
+         aria-label="Interactive map showing the 6 covered Laguna delivery towns"></div>
+    <div class="delivery-map-overlay-badge" aria-hidden="true">
+      <span class="rider-scooter-mini">🛵</span>
+      <span>Live Route Preview</span>
+    </div>
+  </div>
+
+  <!-- Info Bar Beneath Map -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 small text-secondary mt-2 px-1">
+    <div>
+      <span>Selected Town: </span>
+      <strong class="text-dark" data-selected-town-name>Cavinti, Laguna</strong>
+      <span class="text-pink ms-2" data-selected-town-status>(Shop Location)</span>
+    </div>
+    <div class="text-end">
+      <span>Delivery Fee: </span>
+      <strong class="text-pink" data-selected-town-fee>₱0.00 (Free in Cavinti)</strong>
+    </div>
+  </div>
+</section>
+

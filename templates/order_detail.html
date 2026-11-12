@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+{% from '_payment_status.html' import payment_status_badge %}
+{% block title %}Order Details{% endblock %}
+{% block content %}
+<h1 class="h2 fw-bold">Order #{{ order.id }}</h1>
+<div class="row g-4 mt-1">
+  <div class="col-lg-7">
+    <div class="panel p-4">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <h2 class="h5 mb-0">Items</h2>
+        <button class="btn btn-outline-pink" type="button" data-bs-toggle="modal"
+                data-bs-target="#orderReceiptModal">
+          View order receipt
+        </button>
+      </div>
+      <table class="table">
+        <tbody>
+          {% for i in items %}
+          <tr>
+            <td>
+              <strong>{{ i.item_name }}</strong>
+              <div class="small text-secondary">{{ i.color }}</div>
+              {% if order.order_status in ['Delivered', 'Picked Up'] and i.product_id %}
+              <div class="mt-1">
+                <a class="btn btn-sm btn-outline-pink py-0 px-2" style="font-size: 0.74rem;" href="{{ url_for('feedback', item=order.id ~ ':' ~ i.product_id) }}">Review bouquet</a>
+              </div>
+              {% endif %}
+            </td>
+            <td>× {{ i.quantity }}</td>
+            <td>₱{{ '%.2f'|format(i.line_total) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p>Flowers subtotal: ₱{{ '%.2f'|format(order.subtotal) }}</p>
+      {% if order.discount_amount %}<p>Promo {{ order.promo_code }}: −₱{{ '%.2f'|format(order.discount_amount) }}</p>{% endif %}
+      {% if order.fulfillment_method == 'Pickup' %}
+      <p>Shop pickup: Free</p>
+      {% else %}
+      <p>Delivery fee{% if order.delivery_distance_km|float > 0 %} ({{ '%.1f'|format(order.delivery_distance_km) }} km){% else %} (distance estimate unavailable){% endif %}: ₱{{ '%.2f'|format(order.delivery_fee) }}</p>
+      {% endif %}
+      <h3 class="h4">Total: ₱{{ '%.2f'|format(order.total) }}</h3>
+      {% if order.gift_message %}<p><strong>Gift message:</strong> {{ order.gift_message }}</p>{% endif %}
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="panel p-4">
+      <h2 class="h5">Order &amp; Delivery Status</h2>
+      <p class="status-pill">{{ 'Ready for Pickup' if order.fulfillment_method == 'Pickup' and order.order_status == 'Ready for Delivery' else order.order_status }}</p>
+      {% set order_status = order.order_status %}
+      {% set fulfillment_method = order.fulfillment_method %}
+      {% include '_order_timeline.html' %}
+      {% if order.cancellation_reason %}
+      <p class="alert alert-warning"><strong>Cancellation reason:</strong> {{ order.cancellation_reason }}</p>
+      {% endif %}
+      {% if order.fulfillment_method == 'Pickup' or order.order_status != 'Cancelled' %}
+      {% set map_order_id = order.id %}
+      {% set map_order_status = order.order_status %}
+      {% set map_destination = order.delivery_address %}
+      {% set map_fulfillment_method = order.fulfillment_method %}
+      {% include '_delivery_map.html' %}
+      {% endif %}
+      <p class="mt-3"><strong>Payment:</strong> {{ order.payment_method }} —
+        {{ payment_status_badge(order.payment_status, order.payment_method) }}
+      </p>
+      {% if order.payment_method == 'GCash' %}
+      <section class="gcash-payment-instructions panel p-3 mt-3" aria-labelledby="orderGcashTitle">
+        <h2 class="h6 fw-bold" id="orderGcashTitle">GCash payment details</h2>
+        <p class="mb-1"><strong>GCash name:</strong> {{ gcash.name }}</p>
+        <p class="mb-2"><strong>GCash number:</strong> <span id="orderGcashNumber" data-gcash-number>{{ gcash.number }}</span>
+          <button class="btn btn-sm btn-outline-pink ms-2" type="button" data-copy-to="orderGcashNumber">Copy number</button>
+          <span class="small ms-2" data-copy-status aria-live="polite"></span>
+        </p>
+        {% include '_gcash_qr.html' %}
+        <p><strong>Amount to pay:</strong> ₱{{ '%.2f'|format(order.total) }}</p>
+        {% if order.payment_status == 'Paid' %}
+        <p class="alert alert-success mb-2">Your payment has been verified by the shop.</p>
+        {% else %}
+          {% if order.payment_status == 'Failed' %}
+          <p class="alert alert-danger mb-2">Your payment was rejected. Upload a new receipt after reviewing the shop's reason.</p>
+          {% elif order.payment_proof_filename %}
+          <p class="alert alert-warning mb-2">Payment pending verification. The shop will review your receipt.</p>
+          {% else %}
+          <p class="small text-secondary">Pay the exact amount to the account above, then upload your receipt below.</p>
+          {% endif %}
+          {% if order.order_status == 'Pending' and (not order.payment_proof_filename or order.payment_status == 'Failed') %}
+          <form method="post" enctype="multipart/form-data" action="{{ url_for('upload_order_payment_proof_route', order_id=order.id) }}">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <label class="form-label" for="orderPaymentProof">Upload GCash screenshot/photo (PNG, JPG, WEBP; max 5 MB)</label>
+            <input class="form-control mb-2" id="orderPaymentProof" type="file" name="payment_proof" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" required>
+            <button class="btn btn-pink" type="submit">{{ 'Upload new receipt' if order.payment_status == 'Failed' else 'Upload payment receipt' }}</button>
+          </form>
+          {% endif %}
+        {% endif %}
+        {% if order.payment_proof_filename %}
+        <a href="{{ url_for('payment_proof_file', order_type='Order', order_id=order.id) }}" target="_blank" rel="noopener">
+          <img class="payment-proof-thumbnail" src="{{ url_for('payment_proof_file', order_type='Order', order_id=order.id) }}" alt="Your uploaded GCash payment proof">
+        </a>
+        <p class="small text-secondary mt-2">Receipt uploaded {{ order.payment_proof_uploaded_at }}.</p>
+        {% endif %}
+        {% if order.payment_review_note %}<p class="alert alert-warning"><strong>Shop note:</strong> {{ order.payment_review_note }}</p>{% endif %}
+      </section>
+      {% endif %}
+      <p><strong>{{ 'Pickup location' if order.fulfillment_method == 'Pickup' else 'Delivery address' }}:</strong> {{ order.delivery_address }}</p>
+      {% if order.schedule_preference %}<p><strong>Schedule preference:</strong> {{ order.schedule_preference }}</p>{% elif scheduled_slot %}<p><strong>Scheduled {{ scheduled_slot.fulfillment_method|lower }}:</strong> {{ scheduled_slot.starts_at.strftime('%b %d, %Y %I:%M %p') }}</p>{% endif %}
+      <p><strong>Contact:</strong> {{ order.phone }}</p>
+      <p><strong>Last delivery update:</strong> {{ delivery.updated_at if delivery else 'Not updated' }}</p>
+      {% if order.order_status in ['Delivered', 'Picked Up'] and not order.customer_received_at %}
+      <form class="d-inline-block" method="post" action="{{ url_for('customer_confirm_delivery',order_id=order.id) }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn btn-pink" type="submit">Confirm received</button>
+      </form>
+      {% elif order.customer_received_at %}
+      <span class="badge text-bg-success">Received</span>
+      {% endif %}
+      <a class="btn btn-outline-pink ms-2" href="{{ url_for('track') }}">Track order</a>
+    </div>
+    {% if order.order_status == 'Pending' %}
+    <section class="panel p-4 mt-4">
+      <h2 class="h5 fw-bold">Change schedule</h2>
+      <form method="post" action="{{ url_for('customer_reschedule_order', order_id=order.id) }}" class="mb-3">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <label class="form-label" for="orderRescheduleSlot">Choose a future {{ order.fulfillment_method|lower }} slot</label>
+        <select class="form-select mb-2" id="orderRescheduleSlot" name="delivery_slot_id">
+          <option value="">No scheduled slot</option>
+          {% for slot in delivery_slots if slot.fulfillment_method == order.fulfillment_method %}
+          <option value="{{ slot.id }}" {% if scheduled_slot and scheduled_slot.id == slot.id %}selected{% endif %} {% if not slot.remaining and (not scheduled_slot or scheduled_slot.id != slot.id) %}disabled{% endif %}>
+            {{ slot.starts_at.strftime('%b %d, %Y %I:%M %p') }}{% if not slot.remaining and (not scheduled_slot or scheduled_slot.id != slot.id) %} — Full{% endif %}
+          </option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-outline-pink" type="submit">Update schedule</button>
+      </form>
+      <form method="post" action="{{ url_for('customer_cancel_order', order_id=order.id) }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn btn-outline-danger" type="submit" data-confirm="Cancel this pending order?">Cancel pending order</button>
+      </form>
+    </section>
+    {% endif %}
+  </div>
+</div>
+
+<div class="modal fade receipt-modal" id="orderReceiptModal" tabindex="-1"
+     aria-labelledby="orderReceiptTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title h5 fw-bold" id="orderReceiptTitle">Order Receipt</h2>
+        <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <article class="receipt-paper" data-receipt-print-area>
+          <header class="receipt-header">
+            <img src="{{ url_for('static', filename='facebook-page.jpg') }}" alt=""
+                 class="receipt-logo">
+            <div>
+              <p class="receipt-eyebrow">BOUQUET ORDER RECEIPT</p>
+              <h3>FuzzyWire Bouquet</h3>
+              <p>Thoughtful flowers, made with care.</p>
+            </div>
+          </header>
+          <div class="receipt-order-heading">
+            <div><span>ORDER NUMBER</span><strong>#{{ order.id }}</strong></div>
+            <div><span>ORDER DATE</span><strong>{{ order.created_at }}</strong></div>
+          </div>
+          <section class="receipt-customer">
+            <div><span>Customer</span><strong>{{ order.customer_name }}</strong></div>
+            <div><span>Email</span><strong>{{ order.customer_email }}</strong></div>
+            <div><span>Contact</span><strong>{{ order.phone }}</strong></div>
+            <div><span>{{ 'Pickup location' if order.fulfillment_method == 'Pickup' else 'Delivery address' }}</span>
+              <strong>{{ order.delivery_address }}</strong></div>
+          </section>
+          <table class="table receipt-items">
+            <thead>
+              <tr><th>Item</th><th>Details</th><th class="text-center">Qty</th><th class="text-end">Amount</th></tr>
+            </thead>
+            <tbody>
+              {% for i in items %}
+              <tr>
+                <td>{{ i.item_name }}</td>
+                <td>{{ i.color or 'Bouquet' }}</td>
+                <td class="text-center">{{ i.quantity }}</td>
+                <td class="text-end">₱{{ '%.2f'|format(i.line_total) }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <div class="receipt-totals">
+            <div><span>Flowers subtotal</span><strong>₱{{ '%.2f'|format(order.subtotal) }}</strong></div>
+            {% if order.fulfillment_method == 'Pickup' %}
+            <div><span>Pickup</span><strong>Free</strong></div>
+            {% else %}
+            <div><span>Delivery fee</span><strong>₱{{ '%.2f'|format(order.delivery_fee) }}</strong></div>
+            {% endif %}
+            <div class="receipt-grand-total"><span>Total</span><strong>₱{{ '%.2f'|format(order.total) }}</strong></div>
+          </div>
+          <section class="receipt-payment">
+            <div><span>Payment method</span><strong>{{ order.payment_method }}</strong></div>
+            <div><span>Payment status</span><strong>{{ order.payment_status }}</strong></div>
+            <div><span>Order status</span><strong>{{ order.order_status }}</strong></div>
+          </section>
+          <p class="receipt-thanks">Thank you for choosing FuzzyWire Bouquet!</p>
+        </article>
+      </div>
+      <div class="modal-footer receipt-modal-actions">
+        <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Close</button>
+        <button class="btn btn-pink" type="button" data-print-receipt>Print receipt</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

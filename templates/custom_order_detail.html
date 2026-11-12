@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% block title %}Custom Request #C{{ order.id }}{% endblock %}
+{% from '_payment_status.html' import payment_status_badge %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+  <div>
+    <p class="eyebrow mb-1">CUSTOM BOUQUET REQUEST</p>
+    <h1 class="h2 fw-bold mb-1">Request #C{{ order.id }}</h1>
+    <p class="text-secondary mb-0">Submitted {{ order.created_at }}</p>
+  </div>
+  <a class="btn btn-outline-pink" href="{{ url_for('my_orders') }}">Back to My Orders</a>
+</div>
+<div class="row g-4">
+  <div class="col-lg-7">
+    <section class="panel p-4 mb-4">
+      <h2 class="h5 fw-bold">Design and materials</h2>
+      <p>{{ order.flower_type }} · {{ order.flower_color }} · {{ order.bouquet_size }} · {{ order.wrapping_style }} · Quantity {{ order.quantity }}</p>
+      {% if order.custom_message %}<p><strong>Notes for the florist:</strong> {{ order.custom_message }}</p>{% endif %}
+      {% if order.reference_image %}
+      <h3 class="h6">Reference photo</h3>
+      <img class="admin-design" src="{{ url_for('static', filename='uploads/' + order.reference_image) }}" alt="Your reference photo for custom request {{ order.id }}">
+      {% endif %}
+      {% if order.drawing_image %}
+      <h3 class="h6 mt-3">Your drawing</h3>
+      <img class="admin-design" src="{{ url_for('static', filename='uploads/' + order.drawing_image) }}" alt="Your bouquet drawing for custom request {{ order.id }}">
+      {% endif %}
+      {% if materials %}
+      <div class="table-responsive mt-3">
+        <table class="table table-sm align-middle">
+          <thead><tr><th>Material</th><th>Quantity</th><th class="text-end">Amount</th></tr></thead>
+          <tbody>{% for material in materials %}
+          <tr><td>{{ material.material_name }}</td><td>{{ '%.2f'|format(material.quantity) }}</td><td class="text-end">₱{{ '%.2f'|format(material.line_total) }}</td></tr>
+          {% endfor %}</tbody>
+        </table>
+      </div>
+      {% endif %}
+      <p class="mb-1"><strong>{{ 'Pickup location' if order.fulfillment_method == 'Pickup' else 'Delivery address' }}:</strong> {{ order.delivery_address or 'Not provided' }}</p>
+      {% if order.schedule_preference %}<p class="mb-1"><strong>Schedule preference:</strong> {{ order.schedule_preference }}</p>{% elif scheduled_slot %}<p class="mb-1"><strong>Scheduled {{ scheduled_slot.fulfillment_method|lower }}:</strong> {{ scheduled_slot.starts_at.strftime('%b %d, %Y %I:%M %p') }}</p>{% endif %}
+      {% if order.fulfillment_method == 'Delivery' %}<p class="mb-1"><strong>Delivery fee:</strong> ₱{{ '%.2f'|format(order.delivery_fee) }} {% if order.delivery_distance_km|float > 0 %}({{ '%.2f'|format(order.delivery_distance_km) }} km){% else %}(distance estimate unavailable){% endif %}</p>{% endif %}
+      <h3 class="h4 mt-3">Total: ₱{{ '%.2f'|format(order.total_price) }}</h3>
+      {% if order.cancellation_reason %}<p class="alert alert-warning"><strong>Cancellation reason:</strong> {{ order.cancellation_reason }}</p>{% endif %}
+    </section>
+
+    <section class="panel p-4">
+      <h2 class="h5 fw-bold">Request status</h2>
+      {% set order_status = order.status %}
+      {% set fulfillment_method = order.fulfillment_method %}
+      {% include '_order_timeline.html' %}
+      {% if order.status in ['Delivered', 'Picked Up'] and not order.customer_received_at %}
+      <form method="post" action="{{ url_for('customer_confirm_custom_delivery', custom_id=order.id) }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn btn-pink" type="submit">Confirm received</button>
+      </form>
+      {% elif order.customer_received_at %}<span class="badge text-bg-success">Received</span>{% endif %}
+    </section>
+  </div>
+
+  <div class="col-lg-5">
+    <section class="panel p-4 mb-4">
+      <h2 class="h5 fw-bold">Payment</h2>
+      <p>{{ order.payment_method }} —
+        {{ payment_status_badge(order.payment_status, order.payment_method) }}
+      </p>
+      {% if order.payment_method == 'GCash' %}
+      <div class="gcash-payment-instructions panel p-3">
+        <h3 class="h6 fw-bold">GCash payment details</h3>
+        <p class="mb-1"><strong>GCash name:</strong> {{ gcash.name }}</p>
+        <p class="mb-1"><strong>GCash number:</strong> <span id="customOrderGcashNumber" data-custom-gcash-number>{{ gcash.number }}</span>
+          <button class="btn btn-sm btn-outline-pink ms-2" type="button" data-copy-to="customOrderGcashNumber">Copy number</button>
+          <span class="small ms-2" data-copy-status aria-live="polite"></span>
+        </p>
+        {% include '_gcash_qr.html' %}
+        <p><strong>Amount to pay:</strong> ₱{{ '%.2f'|format(order.total_price) }}</p>
+        {% if order.payment_status == 'Paid' %}
+        <p class="alert alert-success">Your payment has been verified by the shop.</p>
+        {% else %}
+        <ol class="small">
+          <li>Pay exactly the amount shown above using the account details above.</li>
+          <li>Save a screenshot or photo of the successful payment.</li>
+          <li>Upload it below. Payment remains pending until verified by an admin.</li>
+        </ol>
+        {% if order.payment_status == 'Failed' %}
+        <p class="alert alert-danger">Your payment was rejected. Review the shop's reason before uploading a new receipt.</p>
+        {% elif order.payment_proof_filename %}
+        <p class="alert alert-warning">Payment pending verification. The shop will review your receipt.</p>
+        {% endif %}
+        {% if order.status == 'Pending' and order.payment_status != 'Paid' and (not order.payment_proof_filename or order.payment_status == 'Failed') %}
+        <form method="post" enctype="multipart/form-data" action="{{ url_for('upload_custom_payment_proof_route', custom_id=order.id) }}">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <label class="form-label" for="customPaymentProof">Upload GCash receipt (PNG, JPG, WEBP; max 5 MB)</label>
+          <input class="form-control mb-2" id="customPaymentProof" type="file" name="payment_proof" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" required>
+          <button class="btn btn-pink" type="submit">{{ 'Upload new receipt' if order.payment_status == 'Failed' else 'Upload payment receipt' }}</button>
+        </form>
+        {% elif order.status != 'Pending' %}
+        <p class="small text-secondary mb-0">Payment proof upload is unavailable because this request is no longer Pending.</p>
+        {% endif %}
+        {% endif %}
+        {% if order.payment_proof_filename %}
+        <a href="{{ url_for('payment_proof_file', order_type='Custom', order_id=order.id) }}" target="_blank" rel="noopener">
+          <img class="payment-proof-thumbnail" src="{{ url_for('payment_proof_file', order_type='Custom', order_id=order.id) }}" alt="Your uploaded GCash proof for custom request {{ order.id }}">
+        </a>
+        <p class="small text-secondary mt-2">Receipt uploaded {{ order.payment_proof_uploaded_at }}.</p>
+        {% endif %}
+        {% if order.payment_review_note %}<p class="alert alert-warning"><strong>Shop note:</strong> {{ order.payment_review_note }}</p>{% endif %}
+      </div>
+      {% endif %}
+    </section>
+
+    {% if order.fulfillment_method == 'Pickup' or order.status != 'Cancelled' %}
+    {% set map_order_id = order.id %}
+    {% set map_order_status = order.status %}
+    {% set map_destination = order.delivery_address %}
+    {% set map_fulfillment_method = order.fulfillment_method %}
+    {% set map_route_url = url_for('custom_delivery_map_data', custom_id=order.id) %}
+    {% include '_delivery_map.html' %}
+    {% endif %}
+
+    {% if order.status == 'Pending' %}
+    <section class="panel p-4 mt-4">
+      <h2 class="h5 fw-bold">Change schedule</h2>
+      <form method="post" action="{{ url_for('customer_reschedule_custom_order', custom_id=order.id) }}" class="mb-3">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <label class="form-label" for="customRescheduleSlot">Choose a future {{ order.fulfillment_method|lower }} slot</label>
+        <select class="form-select mb-2" id="customRescheduleSlot" name="delivery_slot_id">
+          <option value="">No scheduled slot</option>
+          {% for slot in delivery_slots if slot.fulfillment_method == order.fulfillment_method %}
+          <option value="{{ slot.id }}" {% if scheduled_slot and scheduled_slot.id == slot.id %}selected{% endif %} {% if not slot.remaining and (not scheduled_slot or scheduled_slot.id != slot.id) %}disabled{% endif %}>
+            {{ slot.starts_at.strftime('%b %d, %Y %I:%M %p') }}{% if not slot.remaining and (not scheduled_slot or scheduled_slot.id != slot.id) %} — Full{% endif %}
+          </option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-outline-pink" type="submit">Update schedule</button>
+      </form>
+      <form method="post" action="{{ url_for('customer_cancel_custom_order', custom_id=order.id) }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn btn-outline-danger" type="submit" data-confirm="Cancel this custom request?">Cancel pending request</button>
+      </form>
+    </section>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

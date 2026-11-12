@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Verify your FuzzyWire Bouquet account</title>
+</head>
+<body style="margin:0;padding:0;background:#fff3f7;font-family:Arial,Helvetica,sans-serif;color:#372b32;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#fff3f7;padding:32px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0"
+               style="width:100%;max-width:600px;background:#ffffff;border:1px solid #f2dce5;border-radius:20px;overflow:hidden;">
+          <tr>
+            <td align="center" style="padding:30px 24px 24px;background:linear-gradient(135deg,#fff8fb,#fde8f0);">
+              {% if has_logo %}<img src="cid:fuzzywire-logo" width="76" height="76" alt="FuzzyWire Bouquet logo"
+                   style="display:block;width:76px;height:76px;object-fit:cover;border-radius:18px;margin:0 auto 12px;">{% endif %}
+              <div style="font-size:23px;font-weight:700;letter-spacing:-.4px;color:#7f294b;">FuzzyWire Bouquet</div>
+              <div style="margin-top:5px;font-size:11px;font-weight:700;letter-spacing:2px;color:#b24c72;">MADE WITH LOVE</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:34px 34px 24px;">
+              <div style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:1.5px;color:#bd4770;">WELCOME</div>
+              <h1 style="margin:0 0 18px;font-size:27px;line-height:1.25;color:#332730;">Hi {{ customer_name|e }}, welcome!</h1>
+              <p style="margin:0 0 14px;font-size:15px;line-height:1.7;color:#62545d;">
+                Thank you for creating a FuzzyWire Bouquet account. We’re happy you’re here.
+              </p>
+              <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#62545d;">
+                To confirm this email address, use the button below. The secure link expires in 24 hours.
+              </p>
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto 24px;">
+                <tr>
+                  <td align="center" bgcolor="#d94375" style="border-radius:12px;">
+                    <a href="{{ verification_url|e }}"
+                       style="display:inline-block;padding:16px 30px;border:1px solid #d94375;border-radius:12px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;letter-spacing:.5px;">
+                      VERIFY MY ACCOUNT
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <div style="padding:15px 16px;border:1px solid #f3dfe7;border-radius:12px;background:#fff9fb;">
+                <div style="margin-bottom:5px;font-size:12px;font-weight:700;color:#7f294b;">A quick security note</div>
+                <div style="font-size:13px;line-height:1.6;color:#766a71;">
+                  If you didn’t create this account, you can safely ignore this message. Never share your verification link.
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:20px 24px 25px;border-top:1px solid #f3e5eb;background:#fffafd;">
+              <div style="font-size:13px;font-weight:700;color:#7f294b;">FuzzyWire Bouquet</div>
+              <div style="margin-top:5px;font-size:11px;line-height:1.5;color:#8b7b84;">
+                Thoughtful flowers for life’s lovely moments.
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

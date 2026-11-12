@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}Admin Sign In | FuzzyWire Bouquet{% endblock %}
+{% block content %}
+<section class="admin-login-layout" aria-label="Admin sign in">
+  <div class="login-form-panel admin-login-card">
+    <a class="admin-login-brand" href="{{ url_for('home') }}" aria-label="FuzzyWire Bouquet home">
+      <img class="admin-login-logo" src="{{ url_for('static', filename='facebook-page.jpg') }}" alt="">
+      <span>FuzzyWire <strong>Bouquet</strong></span>
+    </a>
+    <div class="admin-login-heading">
+      <span class="admin-login-icon" aria-hidden="true">✿</span>
+      <p class="eyebrow mb-2">SECURE ADMIN PORTAL</p>
+      <h1 class="h2 fw-bold mb-2">Welcome back</h1>
+      <p class="text-secondary mb-4">Sign in to manage your store and orders.</p>
+    </div>
+    <form method="post">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label class="form-label" for="adminLoginEmail">Admin email</label>
+      <input class="form-control mb-3" id="adminLoginEmail" type="email" name="email"
+             autocomplete="username" maxlength="160" required>
+      <label class="form-label" for="adminLoginPassword">Password</label>
+      <div class="admin-password-field">
+        <input class="form-control" id="adminLoginPassword" type="password" name="password"
+               autocomplete="current-password" required>
+        <button class="password-visibility-toggle" type="button" data-password-toggle="adminLoginPassword"
+                aria-controls="adminLoginPassword" aria-label="Show password" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true" data-eye-open><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true" data-eye-closed hidden><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.7 10.7 0 0 1 12 5c6.4 0 10 7 10 7a14.8 14.8 0 0 1-3.1 3.8M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7c1 0 2-.2 2.8-.5"/></svg>
+        </button>
+      </div>
+      <div class="text-end mb-3 mt-2"><a class="small" href="{{ url_for('forgot_password') }}">Forgot password?</a></div>
+      <button class="btn btn-pink btn-lg w-100" type="submit">Sign in to admin</button>
+    </form>
+    <p class="small text-secondary text-center mt-4 mb-0"><a href="{{ url_for('login') }}">Return to customer login</a></p>
+  </div>
+</section>
+{% endblock %}

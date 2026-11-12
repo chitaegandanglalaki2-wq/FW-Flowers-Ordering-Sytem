@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Chat with us{% endblock %}
+{% block content %}
+<div class="chat-page-heading mb-4">
+  <p class="eyebrow mb-1">A LITTLE HELP, JUST A MESSAGE AWAY</p>
+  <h1 class="h2 fw-bold mb-2">Chat with FuzzyWire</h1>
+  <p class="text-secondary mb-0">Ask us about bouquets, custom orders, or your delivery.</p>
+</div>
+<div class="chat-page-layout">
+  {% set current_role = 'customer' %}
+  {% include '_chat_panel.html' %}
+  <aside class="chat-help-card">
+    <span class="chat-help-icon" aria-hidden="true">♡</span>
+    <h2 class="h6 fw-bold">How can we help?</h2>
+    <p class="small text-secondary mb-0">Send us a message and our shop team will reply here. Keep this page open to see new messages.</p>
+  </aside>
+</div>
+{% endblock %}

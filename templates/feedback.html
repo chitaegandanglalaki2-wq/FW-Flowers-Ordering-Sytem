@@ -1,0 +1,238 @@
+{% extends 'base.html' %}
+{% block title %}Feedback{% endblock %}
+{% block content %}
+<div class="panel p-4 mx-auto feedback-panel">
+  <p class="eyebrow mb-1">YOUR BOUQUET, YOUR WORDS</p>
+  <h1 class="h2 fw-bold">Review a delivered bouquet</h1>
+  <p class="text-secondary">Feedback is available for bouquets from orders marked Delivered. Choose the exact flower arrangement you received to rate and write your review.</p>
+
+  {% if delivered_items %}
+  <form method="post" class="mt-4" id="feedbackForm">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+    <!-- BOUQUET SELECTION WITH PHOTO AND DETAILS -->
+    <div class="mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <label class="form-label fw-bold mb-0">Bouquet you received <span class="text-pink">♥</span></label>
+        <small class="text-secondary">Choose the bouquet to review</small>
+      </div>
+
+      <div class="row g-3" id="feedbackCardsList">
+        {% for item in delivered_items %}
+        {% set item_val = item.order_id ~ ':' ~ item.product_id %}
+        {% set is_selected = (preselected_item and preselected_item == item_val) or (not preselected_item and loop.first) %}
+        <div class="col-md-6">
+          <input
+            class="btn-check feedback-item-radio"
+            type="radio"
+            name="purchased_item"
+            id="item_{{ item.order_id }}_{{ item.product_id }}"
+            value="{{ item_val }}"
+            data-name="{{ item.item_name }}"
+            data-order="Order #{{ item.order_id }}"
+            data-details="{% if item.color %}{{ item.color }}{% endif %}{% if item.quantity %} · Qty: {{ item.quantity }}{% endif %}{% if item.unit_price %} · ₱{{ '%.2f'|format(item.unit_price) }}{% endif %}"
+            data-image="{% if item.image_filename %}{{ url_for('static', filename='uploads/' + item.image_filename) }}{% else %}{{ url_for('static', filename='bouquet-art.svg') }}{% endif %}"
+            {% if is_selected %}checked{% endif %}
+            required>
+          <label class="feedback-product-card h-100 w-100" for="item_{{ item.order_id }}_{{ item.product_id }}">
+            <div class="rounded-3 overflow-hidden flex-shrink-0 border" style="width: 72px; height: 72px; background: #fff0f5;">
+              {% if item.image_filename %}
+              <img class="w-100 h-100 object-fit-cover" src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" alt="{{ item.item_name }}">
+              {% else %}
+              <img class="w-100 h-100 object-fit-contain p-2" src="{{ url_for('static', filename='bouquet-art.svg') }}" alt="{{ item.item_name }}">
+              {% endif %}
+            </div>
+            <div class="flex-grow-1 min-w-0 text-start">
+              <span class="badge bg-pink-subtle text-pink mb-1" style="font-size: 0.68rem;">Order #{{ item.order_id }} · Delivered</span>
+              <strong class="d-block text-truncate mb-1" style="font-size: 0.95rem;">{{ item.item_name }}</strong>
+              <small class="text-secondary d-block" style="font-size: 0.78rem;">
+                {% if item.color %}{{ item.color }}{% endif %}
+                {% if item.quantity %} · Qty: {{ item.quantity }}{% endif %}
+                {% if item.unit_price %} · ₱{{ '%.2f'|format(item.unit_price) }}{% endif %}
+              </small>
+            </div>
+            <span class="card-check-indicator ms-auto" aria-hidden="true">✔</span>
+          </label>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- SELECTED BOUQUET SPOTLIGHT PREVIEW BANNER -->
+    <div class="feedback-spotlight mb-4" id="bouquetSpotlight">
+      <img id="spotlightImg" class="feedback-spotlight-img flex-shrink-0" src="" alt="Selected bouquet">
+      <div class="flex-grow-1 min-w-0">
+        <span class="badge bg-pink text-white mb-1">Selected Bouquet to Review</span>
+        <h2 class="h6 fw-bold mb-1 text-truncate" id="spotlightName"></h2>
+        <p class="small text-secondary mb-0" id="spotlightDetails"></p>
+      </div>
+    </div>
+
+    <!-- RATING (INTERACTIVE STARS + SYNCED SELECT) -->
+    <div class="mb-3">
+      <label class="form-label fw-bold d-block" for="rating">Rating <span class="text-pink">♥</span></label>
+      <div class="star-rating-box">
+        <div class="star-rating-buttons" id="starButtons" role="radiogroup" aria-label="Select 1 to 5 stars">
+          <button type="button" class="star-btn" data-score="1" aria-label="1 star">★</button>
+          <button type="button" class="star-btn" data-score="2" aria-label="2 stars">★</button>
+          <button type="button" class="star-btn" data-score="3" aria-label="3 stars">★</button>
+          <button type="button" class="star-btn" data-score="4" aria-label="4 stars">★</button>
+          <button type="button" class="star-btn" data-score="5" aria-label="5 stars">★</button>
+        </div>
+        <span class="star-rating-desc" id="starRatingDesc">★★★★★ — 5 out of 5 · Excellent</span>
+      </div>
+      <select class="form-select visually-hidden" id="rating" name="rating" required>
+        <option value="5" selected>5</option>
+        <option value="4">4</option>
+        <option value="3">3</option>
+        <option value="2">2</option>
+        <option value="1">1</option>
+      </select>
+    </div>
+
+    <!-- COMMENT TEXTAREA -->
+    <div class="mb-4">
+      <label class="form-label fw-bold" for="comment">Your feedback <span class="text-pink">♥</span></label>
+      <textarea
+        class="form-control mb-1"
+        id="comment"
+        name="comment"
+        rows="4"
+        minlength="2"
+        maxlength="2000"
+        required
+        placeholder="How did you like your bouquet? Share details about the craftsmanship, wire flowers, colors, or packaging!"></textarea>
+      <div class="d-flex justify-content-between text-secondary small">
+        <span>Write a genuine review to help other customers.</span>
+        <span id="commentCounter">0 / 2,000</span>
+      </div>
+    </div>
+
+    <button class="btn btn-pink btn-lg px-4" type="submit">Submit review</button>
+  </form>
+  {% else %}
+  <div class="empty-state compact mt-4">
+    <span aria-hidden="true">🌷</span>
+    <p class="mb-0">No delivered bouquets are waiting for a review. After an order is marked Delivered, you can rate each flower arrangement you bought.</p>
+  </div>
+  {% endif %}
+</div>
+
+{% if my_feedback %}
+<section class="mt-4 mx-auto feedback-panel">
+  <h2 class="h4 fw-bold mb-3">Your reviews</h2>
+  <div class="row g-3">
+    {% for review in my_feedback %}
+    <div class="col-md-6">
+      <article class="panel p-3 h-100 d-flex flex-column">
+        <div class="d-flex gap-3 align-items-start mb-2">
+          <div class="rounded-2 overflow-hidden flex-shrink-0 border" style="width: 58px; height: 58px; background: #fff0f5;">
+            {% if review.image_filename %}
+            <img class="w-100 h-100 object-fit-cover" src="{{ url_for('static', filename='uploads/' + review.image_filename) }}" alt="{{ review.item_name }}">
+            {% else %}
+            <img class="w-100 h-100 object-fit-contain p-1" src="{{ url_for('static', filename='bouquet-art.svg') }}" alt="{{ review.item_name }}">
+            {% endif %}
+          </div>
+          <div class="flex-grow-1 min-w-0">
+            <strong class="d-block text-truncate mb-1">{{ review.item_name or 'Bouquet review' }}</strong>
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="review-stars text-warning" aria-label="{{ review.rating }} out of 5 stars">
+                {{ '★' * review.rating }}<span class="text-secondary opacity-50">{{ '★' * (5 - review.rating) }}</span>
+              </span>
+              <small class="text-secondary">Order #{{ review.order_number or '—' }}</small>
+            </div>
+          </div>
+        </div>
+        <p class="small text-secondary mb-2">{{ review.created_at }}</p>
+        <p class="mb-0 text-break flex-grow-1" style="font-size: 0.9rem; line-height: 1.5;">{{ review.comment }}</p>
+        {% if review.admin_reply %}
+        <div class="feedback-admin-reply mt-3 p-2 rounded-2 bg-pink-subtle border border-pink">
+          <strong class="small text-pink d-block">Reply from FuzzyWire:</strong>
+          <p class="small mb-0 text-secondary">{{ review.admin_reply }}</p>
+        </div>
+        {% endif %}
+      </article>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  // Sync selected bouquet card with the spotlight banner
+  const radios = document.querySelectorAll('.feedback-item-radio');
+  const spotlightImg = document.getElementById('spotlightImg');
+  const spotlightName = document.getElementById('spotlightName');
+  const spotlightDetails = document.getElementById('spotlightDetails');
+
+  const updateSpotlight = (radio) => {
+    if (!radio || !spotlightImg || !spotlightName || !spotlightDetails) return;
+    spotlightImg.src = radio.dataset.image || '';
+    spotlightImg.alt = radio.dataset.name || 'Bouquet';
+    spotlightName.textContent = radio.dataset.name || 'Bouquet';
+    spotlightDetails.textContent = `${radio.dataset.order || ''} ${radio.dataset.details ? '· ' + radio.dataset.details : ''}`;
+  };
+
+  radios.forEach((radio) => {
+    radio.addEventListener('change', () => {
+      if (radio.checked) updateSpotlight(radio);
+    });
+  });
+
+  const checkedRadio = document.querySelector('.feedback-item-radio:checked');
+  if (checkedRadio) updateSpotlight(checkedRadio);
+
+  // Interactive star rating
+  const starButtons = document.querySelectorAll('.star-btn');
+  const ratingSelect = document.getElementById('rating');
+  const starRatingDesc = document.getElementById('starRatingDesc');
+  const ratingLabels = {
+    1: '★☆☆☆☆ — 1 out of 5 · Very poor',
+    2: '★★☆☆☆ — 2 out of 5 · Poor',
+    3: '★★★☆☆ — 3 out of 5 · Okay',
+    4: '★★★★☆ — 4 out of 5 · Good',
+    5: '★★★★★ — 5 out of 5 · Excellent'
+  };
+
+  const setStars = (score) => {
+    const num = Math.max(1, Math.min(5, Number(score) || 5));
+    if (ratingSelect) ratingSelect.value = String(num);
+    starButtons.forEach((btn) => {
+      const btnScore = Number(btn.dataset.score);
+      btn.classList.toggle('is-active', btnScore <= num);
+    });
+    if (starRatingDesc) starRatingDesc.textContent = ratingLabels[num] || `${num} out of 5`;
+  };
+
+  starButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      setStars(btn.dataset.score);
+    });
+    btn.addEventListener('mouseenter', () => {
+      const hoverScore = Number(btn.dataset.score);
+      starButtons.forEach((b) => {
+        b.classList.toggle('is-active', Number(b.dataset.score) <= hoverScore);
+      });
+      if (starRatingDesc) starRatingDesc.textContent = ratingLabels[hoverScore];
+    });
+    btn.addEventListener('mouseleave', () => {
+      setStars(ratingSelect ? ratingSelect.value : 5);
+    });
+  });
+
+  setStars(ratingSelect ? ratingSelect.value : 5);
+
+  // Comment character counter
+  const commentInput = document.getElementById('comment');
+  const commentCounter = document.getElementById('commentCounter');
+  if (commentInput && commentCounter) {
+    commentInput.addEventListener('input', () => {
+      commentCounter.textContent = `${commentInput.value.length} / 2,000`;
+    });
+  }
+})();
+</script>
+{% endblock %}

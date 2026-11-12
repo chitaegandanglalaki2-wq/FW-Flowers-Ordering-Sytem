@@ -1,0 +1,56 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}GCash Settings{% endblock %}
+{% block admin_content %}
+<div class="admin-page-heading">
+  <div>
+    <p class="eyebrow mb-1">PAYMENT SETTINGS</p>
+    <h1 class="h2 fw-bold mb-1">Payment settings</h1>
+    <p class="text-secondary mb-0">Customers can use these details to pay for their orders.</p>
+  </div>
+</div>
+<section class="gcash-settings-float-card panel p-3 p-md-4"
+         aria-labelledby="gcashSettingsTitle">
+  <div class="gcash-settings-account-mark" aria-hidden="true">₱</div>
+  <div class="gcash-settings-card-content">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+      <div>
+        <p class="eyebrow mb-1">GCASH</p>
+        <h2 class="h5 fw-bold mb-1" id="gcashSettingsTitle">Payment number and QR code</h2>
+        <p class="text-secondary mb-0">This is the number customers see when they choose GCash at checkout.</p>
+      </div>
+      <span class="gcash-settings-preview">{{ gcash_number }}</span>
+    </div>
+    <form method="post" enctype="multipart/form-data" class="mt-4" novalidate>
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="gcashName">GCash account name</label>
+        <input class="form-control form-control-lg" id="gcashName" name="gcash_name"
+               type="text" maxlength="120" value="{{ gcash_name }}" placeholder="e.g. Maria Santos / FuzzyWire Bouquet" required>
+        <div class="form-text">This is the name customers see and verify when paying via GCash.</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="gcashNumber">Your GCash number</label>
+        <input class="form-control form-control-lg" id="gcashNumber" name="gcash_number"
+               type="tel" inputmode="tel" autocomplete="tel"
+               pattern="(09[0-9]{9}|[+]63[0-9]{10}|63[0-9]{10})"
+               maxlength="20" value="{{ gcash_number }}" placeholder="09XXXXXXXXX" required>
+        <div class="form-text">Use a valid Philippine mobile number: 09XXXXXXXXX or +639XXXXXXXXX.</div>
+      </div>
+      <div class="mt-4">
+        <label class="form-label fw-semibold" for="gcashQr">GCash QR code (optional)</label>
+        <input class="form-control" id="gcashQr" name="gcash_qr" type="file"
+               accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp">
+        <div class="form-text">PNG, JPG, or WEBP; maximum 5 MB. Uploading a new QR replaces the current one.</div>
+      </div>
+      {% if qr_filename %}
+      <div class="mt-3">
+        <p class="form-label fw-semibold mb-2">Current customer QR code</p>
+        <img class="img-thumbnail" src="{{ url_for('static', filename='uploads/' ~ qr_filename) }}"
+             alt="Current GCash QR code" style="max-width: 240px">
+      </div>
+      {% endif %}
+      <button class="btn btn-pink btn-lg mt-3" type="submit">Save payment settings</button>
+    </form>
+  </div>
+</section>
+{% endblock %}
